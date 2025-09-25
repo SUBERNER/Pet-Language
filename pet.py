@@ -1,9 +1,39 @@
 from sly import Lexer, Parser
 
-class PetNeeds:
-    hunger = 1  # stores how hungry the pet is
-    thirst = 1  # stores how thirsty the pet is
-    energy = 1  # stores how much energy the pet has left
+class PetStatus:
+    # stores the data of each need and how they work
+    class Need():
+        def __init__(self, current: float = 1, minmax: tuple[float,float] = tuple[0,2], drain: float = 0.1, gain: float = 0.1, delay: float = 1):
+            self._current = current # how much of the need is fulfilled
+            self._minmax = minmax # the minimum amount of need before the pet dies and the maximum amount a need can be satisfied
+            self._drain = drain # how much each token drains
+            self._gain = gain # how much satisfying the need gives back
+            self._delay = delay # the length of the delay when satisfying the need
+
+        def current_test(self):
+            # test to see if current is within range of minmax
+            # checks if needs are below minimum. If below minimum, then pet dies
+            if self._current < self._minmax(0):
+               pass
+            # checks if needs are above maximum. If below maximum, then cap
+            elif self._current > self._minmax(1):
+                self._current = self._minmax(1)
+
+        def drain(self, severity: float = 1):
+            # severity is how much a token will drain a need
+            self._current -= self._drain * severity
+            # checks if needs are below minimum
+
+        def gain(self, severity: float = 1):
+            # severity is how much a token will gain a need
+            self._current -= self._gain * severity
+            # checks if needs are above maximum
+            current_test()
+
+    # list of all the needs together
+    hunger = Need(1, (0,1), 0.02, 0.25, 10)  # stores how hungry the pet is
+    thirst = Need(1, (0,1), 0.05, 0.5, 2)  # stores how thirsty the pet is
+    energy = Need(1, (0,1), 0.01, 0.5, 30)  # stores how much energy the pet has left
 
 
 class PetLexer(Lexer):
@@ -150,7 +180,6 @@ class PetExecute:
         elif node[0] == 'mul':
             return self.walk(node[1]) * self.walk(node[2])
         elif node[0] == 'div':
-            print(self.walk(node[1]) / self.walk(node[2]))
             return self.walk(node[1]) / self.walk(node[2])
         elif node[0] == 'rem':
             return self.walk(node[1]) % self.walk(node[2])
