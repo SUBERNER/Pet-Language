@@ -51,7 +51,7 @@ class PetStatus:
 #####################################
 
 class PetLexer(Lexer):
-    tokens = {NAME, NUMBER, STRING}  # categorizes of each token that will be used
+    tokens = {NAME, NUMBER, STRING, TYPE}  # categorizes of each token that will be used
     ignore = '\t '  # tokens that are ignored by the program
     literals = {'=', '+', '-', '/', '%',
                 '*', '(', ')', ',', ';'}  # simple tokens that will be required constantly
@@ -59,6 +59,7 @@ class PetLexer(Lexer):
     # the format of NAME and STRING
     # first [] stores start with characters and second [] stores followed by characters
     NAME = r'[a-zA-Z][a-zA-Z0-9_]*'
+    NAME.keywords = {'int': TYPE, 'string': TYPE}  # sly checks if the name matches one of the keywords in name
     STRING = r'\".*?\"'  # strings must be double quote with anything in it
 
     # tokens for integer numbers
@@ -102,15 +103,15 @@ class PetParser(Parser):
     def statement(self, parse):
         return parse.var_assign
 
+    # assigned an expression or operation to the variable with the type if the var is new
+    @_('TYPE NAME "=" EXPR')
+    def var_declare(self, parse):
+        return 'var_declare', parse.TYPE, parse.NAME, parse.EXPR
+
     # assigned an expression or operation to the variable
     @_('NAME "=" EXPR')
     def var_assign(self, parse):
-        return 'var_assign', parse.NAME, parse.EXPRbefort
-
-    # assigned a string to the variable
-    @_('NAME "=" STRING')
-    def var_assign(self, parse):
-        return 'var_assign', parse.NAME, parse.STRING
+        return 'var_assign', parse.NAME, parse.EXPR
 
     # simply an expression or operation
     @_('EXPR')
@@ -163,6 +164,11 @@ class PetParser(Parser):
     def EXPR(self, parse):
         return 'num', parse.NUMBER
 
+    # simply a string
+    @_('STRING')
+    def EXPR(self, parse):
+        return 'str', parse.STRING
+
 ###########################################
 # PET EXECUTE # PET EXECUTE # PET EXECUTE #
 ###########################################
@@ -189,6 +195,7 @@ class PetExecute:
         # returns the value if the node is a simple number or string
         if node[0] == 'num' or node[0] == 'str':
             return node[1]
+
 
         # returns the nodes value it after doing simple math
         if node[0] == 'add':
