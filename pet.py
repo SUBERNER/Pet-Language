@@ -1,5 +1,6 @@
 from sly import Lexer, Parser
 from time import sleep
+import random
 
 ########################################
 # PET STATUS # PET STATUS # PET STATUS #
@@ -8,7 +9,8 @@ from time import sleep
 class PetStatus:
     # stores the data of each need and how they work
     class Need():
-        def __init__(self, current: float = 1, action: str = '', minmax: tuple[float,float] = tuple[0,2], drain: float = 0.1, gain: float = 0.1, delay: float = 1):
+        def __init__(self, alive: bool, current: float = 1, action: str = '', minmax: tuple[float,float] = tuple[0,2], drain: float = 0.1, gain: float = 0.1, delay: float = 1):
+            self._alive = alive # a reference to the alive value in pet
             self._current = current  # how much of the need is fulfilled
             self._action = action  # the string that notifies the user what need is being worked with
             self._minmax = minmax  # the minimum amount of the need before the pet dies and the maximum amount a need can be satisfied
@@ -16,35 +18,50 @@ class PetStatus:
             self._gain = gain  # how much satisfying the need gives back
             self._delay = delay  # the length of the delay when satisfying the need
 
+        def death(self):
+            # method happens once a pet dies do to a need going to zero
+            print(f"< PET DEAD >")
+            print(f"< CAUSE: Lack Of {self._action} >")  # displays what need caused the death
+            self._alive = False
+
         def current_test(self):
             # test to see if current is within range of minmax
             # checks if needs are below the minimum. if below the minimum, then the pet dies
             if self._current < self._minmax[0]:
-               pass
+                if self._alive:
+                    death() # causes pet to die and stopping the program
             # checks if needs are above the maximum. if below the maximum, then cap
             elif self._current > self._minmax[1]:
-                self._current = self._minmax[1]
+                self._current = self._minmax[1] # sets current back within the maximum limits
 
-        def drain(self, severity: float = 1):
+        def current_calculation(self, value: float = 0, severity: float = 1, offset: tuple[float, float] = tuple[0, 0]):
+            # calculations and alterations that can be done to give more power to how current is altered
+            return (value * severity) + random.uniform(offset[0], offset[1])
+
+        def drain(self, severity: float = 1, offset: tuple[float, float] = tuple[0, 0]):
             # severity is how much a token will drain a need
-            self._current -= self._drain * severity
+            # offset is how much it can randomly adjust the amount drained from the needs current
+            self._current -= current_calculation(self._drain, severity, offset)
             # checks if needs are below the minimum
+            current_test()
 
-        def gain(self, severity: float = 1):
+        def gain(self, severity: float = 1, offset: tuple[float, float] = tuple[0, 0]):
             # severity is how much a token will gain a need
-            self._current -= self._gain * severity
+            # offset is how much it can randomly adjust the amount given to the needs current
+            self._current -= current_calculation(self._gain, severity, offset)
             # checks if needs are above maximum
             current_test()
 
-        def delay(self, severity):
+        def delay(self, severity: float = 1, offset: tuple[float, float] = tuple[0, 0]):
             # severity is how much more or less the delay effects the pet
-            print(f"< pet's {self._action} >")  # displays that the need is being taken care of
-            time.sleep(self._delay)  # the duration in seconds the delay will happen for the action
+            print(f"< Pet's {self._action} >")  # displays that the need is being taken care of
+            time.sleep(current_calculation(self._delay, severity, offset))  # the duration in seconds the delay will happen for the action
 
     # list of all the needs together
-    hunger = Need(1, (0, 1), 0.02, 0.25, 10)  # stores how hungry the pet is
-    thirst = Need(1, (0, 1), 0.05, 0.5, 2)  # stores how thirsty the pet is
-    energy = Need(1, (0, 1), 0.01, 0.5, 30)  # stores how much energy the pet has left
+    alive = True  # notifies the program if the pet is alive and if the code should continue running
+    hunger = Need(alive, 1, "Eating", (0, 1), 0.02, 0.25, 10)  # stores how hungry the pet is
+    thirst = Need(alive, 1, "Drinking", (0, 1), 0.05, 0.5, 2)  # stores how thirsty the pet is
+    energy = Need(alive, 1,"Resting", (0, 1), 0.01, 0.5, 30)  # stores how much energy the pet has left
 
 #####################################
 # PET LEXER # PET LEXER # PET LEXER #
