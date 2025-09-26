@@ -1,6 +1,7 @@
 from sly import Lexer, Parser
 from time import sleep
 import random
+from names_generator import generate_name
 
 ########################################
 # PET STATUS # PET STATUS # PET STATUS #
@@ -58,6 +59,7 @@ class PetStatus:
             time.sleep(current_calculation(self._delay, severity, offset))  # the duration in seconds the delay will happen for the action
 
     # list of all the needs together
+    name = generate_name(style='capital') # generates a random name every time the program is ran, purly visual
     alive = True  # notifies the program if the pet is alive and if the code should continue running
     hunger = Need(alive, 1, "Eating", (0, 1), 0.02, 0.25, 10)  # stores how hungry the pet is
     thirst = Need(alive, 1, "Drinking", (0, 1), 0.05, 0.5, 2)  # stores how thirsty the pet is
@@ -101,9 +103,12 @@ class PetParser(Parser):
 
     # order of operations/processors in operations, math, and logic
     precedence = (
+        ('left', '&'),
+        ('left', '||'),
+        ('nonassoc', '==', '!=', '<=', '>=', '<', '>'),
         ('left', '+', '-'),
         ('left', '*', '/', '%'),
-        ('right', '^'),
+        ('right', '^'), # exponents
         ('right', 'UMINUS')
     )
 
@@ -191,7 +196,7 @@ class PetParser(Parser):
 ###########################################
 
 class PetExecute:
-    def __init__(self, tree, environment):  #
+    def __init__(self, tree, environment, needs: PetStatus):  #
         self.environment = environment  # stores the variables
         result = self.walk(tree)  # returns the full abstract syntax tree holding the split statements form the parser
         # prints results after the tree has been walked and the results of the statements have been made
@@ -200,7 +205,20 @@ class PetExecute:
         if isinstance(result, str) and result[0] == '"':  # test if a result is a string
             print(result)
 
-    def walk(self, node):
+    def walk(self, node, needs):
+
+        # runs all the needs of the pet for each walk and adds severity based on the complexity of the execute
+        def drain_needs(hunger_severity: float = 0, hunger_offset: tuple[float, float] = tuple[0, 0], thirst_severity: float = 0, thirst_offset: tuple[float, float] = tuple[0, 0], energy_severity: float = 0, energy_offset: tuple[float, float] = tuple[0, 0]):
+            needs.hunger.drain()
+            needs.thirst.drain()
+            needs.energy.drain()
+
+        def gain_needs(hunger_severity: float = 0, hunger_offset: tuple[float, float] = tuple[0, 0], thirst_severity: float = 0, thirst_offset: tuple[float, float] = tuple[0, 0], energy_severity: float = 0, energy_offset: tuple[float, float] = tuple[0, 0]):
+            needs.hunger.gain()
+            needs.thirst.gain()
+            needs.energy.gain()
+
+
         # returns if node is already a Python-based value
         if isinstance(node, int) or isinstance(node, str):
             return node
@@ -249,21 +267,30 @@ class PetExecute:
 if __name__ == '__main__':
     lexer = PetLexer()
     parser = PetParser()
-    print("Take Care Of Your Pet")
+    status = PetStatus()
+    print(f"Take Care Of Your New Pet")
+    print(f"{status.name} Is Your Pet's Name")
     environment = {}  # all variables that are kept between each command a user makes
 
     # continues until an error occurs or user end process
     while True:
         try:
-            command = input('Pet Language: ')
+            command = input(f'{status.name}: ') # the name of the programming languages changes everytime, based on your pets name
+
+            # tests if pet program is not alive
+            if status.alive == False:
+                break # ends programming language
 
         except EOFError:
-            break
+            break # ends programming language
 
         # if commands form user was received
         if command:
             tree = parser.parse(lexer.tokenize(command))  # splits command between spaces
-            PetExecute(tree, environment)  # runs the commands
+            PetExecute(tree, environment, status)  # runs the commands
+
+    # makes user press something ENTER before the program fully closes
+    input(f'< Press ENTER To Exit >')
 
 
 
