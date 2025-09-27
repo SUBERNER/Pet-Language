@@ -1,7 +1,6 @@
 from sly import Lexer, Parser
 from time import sleep
 import random
-from names_generator import generate_name
 
 ########################################
 # PET STATUS # PET STATUS # PET STATUS #
@@ -45,6 +44,7 @@ class PetStatus:
             self._current -= current_calculation(self._drain, severity, offset)
             # checks if needs are below the minimum
             current_test()
+            print(self._current)
 
         def gain(self, severity: float = 1, offset: tuple[float, float] = tuple[0, 0]):
             # severity is how much a token will gain a need
@@ -58,12 +58,16 @@ class PetStatus:
             print(f"< Pet's {self._action} >")  # displays that the need is being taken care of
             time.sleep(current_calculation(self._delay, severity, offset))  # the duration in seconds the delay will happen for the action
 
-    # list of all the needs together
-    name = generate_name(style='capital') # generates a random name every time the program is ran, purly visual
+    # generates a random name every time the program is ran, purly visual
+    name = random.choice(["Luna", "Oliver", "Mittens", "Leo", "Bella", "Shadow", "Simba", "Whiskers", "Chloe", "Jasper", "Nala", "Smokey", "Oreo", "Pumpkin", "Milo", "Patches", "Tigger", "Cleo", "Cosmo", "Ginger", "Zelda", "Rocky", "Binx", "Pepper", "Waffles", "Sir Reginald Fluffington III", "Felix", "Salem", "Goose", "Garfield", "Bagheera", "Gizmo", "Cinder", "Willow", "Hazel", "Olive", "Penelope", "Zoe", "Midnight", "Onyx", "Sterling", "Orion", "Jinx", "Figaro", "Cheshire", "Artemis",
+                          "Max", "Buddy", "Lucy", "Charlie", "Daisy", "Cooper", "Sadie", "Bear", "Molly", "Zeus", "Ruby", "Duke", "Penny", "Scout", "Jack", "Stella", "Winston", "Bandit", "Finn", "Mocha", "Gus", "Apollo", "Biscuit", "Marley", "Chewie", "Professor Wigglebottom", "Bailey", "Koda", "Riley", "Thor", "Loki", "Bruno", "Toby", "Murphy", "Otis", "Hank", "Harley", "Gunner", "Samson", "Beau", "Ace", "Buster", "Diesel", "Titan", "Roxy", "Sasha", "Kona", "Zara",
+                          "Kiwi", "Sunny", "Pip", "Echo", "Skye", "Mango", "Percy", "Indigo", "Robin", "Zazu", "Jade", "Sparrow", "Chirpy", "Finch", "Iago", "Zephyr", "Polly", "Hedwig", "Pico", "Bluebell", "Oscar", "Nimbus", "Peanut", "Phoenix", "Tweetie", "Captain Feathers", "Rio", "Jewel", "Kiko", "Petey", "Cypress", "Lark", "Dove", "Merlin", "Griffin", "Comet", "Galaxy", "Starlight", "Quill", "Soren", "Gylfie",
+                          "Squeaky", "Nibbles", "Cheddar", "Remy", "Stuart", "Fievel", "Algernon", "Splinter", "Pinky", "Brain", "Nugget", "Domino", "Barnaby", "Mortimer", "Gouda", "Mochi", "Rizzo", "Popcorn", "Einstein", "Marble", "Basil", "Despereaux", "Scabbers", "Crouton", "Pip-squeak", "Lord Squeakington", "Templeton", "Nicodemus", "Timothy", "Gadget", "Zipper", "Monterey", "Colby", "Provolone", "Feta", "Parsley", "Twitch", "Scamp", "Gus-Gus", "Jaq", "Ratthew"])
     alive = True  # notifies the program if the pet is alive and if the code should continue running
+    # list of all the needs together
     hunger = Need(alive, 1, "Eating", (0, 1), 0.02, 0.25, 10)  # stores how hungry the pet is
     thirst = Need(alive, 1, "Drinking", (0, 1), 0.05, 0.5, 2)  # stores how thirsty the pet is
-    energy = Need(alive, 1,"Resting", (0, 1), 0.01, 0.5, 30)  # stores how much energy the pet has left
+    energy = Need(alive, 1, "Resting", (0, 1), 0.01, 0.5, 30)  # stores how much energy the pet has left
 
 #####################################
 # PET LEXER # PET LEXER # PET LEXER #
@@ -77,8 +81,8 @@ class PetLexer(Lexer):
 
     # the format of NAME and STRING
     # first [] stores start with characters and second [] stores followed by characters
+    TYPE = r'int|string'
     NAME = r'[a-zA-Z][a-zA-Z0-9_]*'
-    NAME.keywords = {'int': TYPE, 'string': TYPE}  # sly checks if the name matches one of the keywords in name
     STRING = r'\".*?\"'  # strings must be double quote with anything in it
 
     # tokens for integer numbers
@@ -103,9 +107,6 @@ class PetParser(Parser):
 
     # order of operations/processors in operations, math, and logic
     precedence = (
-        ('left', '&'),
-        ('left', '||'),
-        ('nonassoc', '==', '!=', '<=', '>=', '<', '>'),
         ('left', '+', '-'),
         ('left', '*', '/', '%'),
         ('right', '^'), # exponents
@@ -119,16 +120,22 @@ class PetParser(Parser):
     def statement(self, parse):
         pass
 
-    # used for variables and assigning variables
+    # used for variables and declaring variables
     # creating a variable with nothing assigned to it
-    @_('var_assign')
+    @_('var_declare')
     def statement(self, parse):
-        return parse.var_assign
+        return parse.var_declare
 
     # assigned an expression or operation to the variable with the type if the var is new
     @_('TYPE NAME "=" EXPR')
     def var_declare(self, parse):
         return 'var_declare', parse.TYPE, parse.NAME, parse.EXPR
+
+    # used for variables and assigning variables
+    # variables with something assigned to it
+    @_('var_assign')
+    def statement(self, parse):
+        return parse.var_assign
 
     # assigned an expression or operation to the variable
     @_('NAME "=" EXPR')
@@ -196,7 +203,7 @@ class PetParser(Parser):
 ###########################################
 
 class PetExecute:
-    def __init__(self, tree, environment, needs: PetStatus):  #
+    def __init__(self, tree, environment):  #
         self.environment = environment  # stores the variables
         result = self.walk(tree)  # returns the full abstract syntax tree holding the split statements form the parser
         # prints results after the tree has been walked and the results of the statements have been made
@@ -205,20 +212,8 @@ class PetExecute:
         if isinstance(result, str) and result[0] == '"':  # test if a result is a string
             print(result)
 
-    def walk(self, node, needs):
 
-        # runs all the needs of the pet for each walk and adds severity based on the complexity of the execute
-        def drain_needs(hunger_severity: float = 0, hunger_offset: tuple[float, float] = tuple[0, 0], thirst_severity: float = 0, thirst_offset: tuple[float, float] = tuple[0, 0], energy_severity: float = 0, energy_offset: tuple[float, float] = tuple[0, 0]):
-            needs.hunger.drain()
-            needs.thirst.drain()
-            needs.energy.drain()
-
-        def gain_needs(hunger_severity: float = 0, hunger_offset: tuple[float, float] = tuple[0, 0], thirst_severity: float = 0, thirst_offset: tuple[float, float] = tuple[0, 0], energy_severity: float = 0, energy_offset: tuple[float, float] = tuple[0, 0]):
-            needs.hunger.gain()
-            needs.thirst.gain()
-            needs.energy.gain()
-
-
+    def walk(self, node):
         # returns if node is already a Python-based value
         if isinstance(node, int) or isinstance(node, str):
             return node
@@ -230,7 +225,6 @@ class PetExecute:
         # returns the value if the node is a simple number or string
         if node[0] == 'num' or node[0] == 'str':
             return node[1]
-
 
         # returns the nodes value it after doing simple math
         if node[0] == 'add':
@@ -246,24 +240,32 @@ class PetExecute:
         elif node[0] == 'pow':
             return self.walk(node[1]) ** self.walk(node[2])
 
+        # stores data inside variables inside the environment when declared
+        if node[0] == 'var_declare':
+            environmental_variable = {'type': node[1], 'value': self.walk(node[3])}
+            self.environment[node[2]] = environmental_variable
+            return node[1]
+
         # returns and stores data inside variables that are stored in the environment
+        # only works for variables that already exist
         if node[0] == 'var_assign':
-            self.environment[node[1]] = self.walk(node[2])
+            self.environment[node[1]]['value'] = self.walk(node[2])
             return node[1]
 
         # returns the value of the variable asked for
         if node[0] == 'var':
             try:
-                return self.environment[node[1]]  # tries to find variable and its data
+                return self.environment[node[1]]['value']  # tries to find variable and its data
             except LookupError:  # if no variable or data was found
-                print(f"< '{node[1]}' Undefined >")
+                print(f"< '{node[1]}' Undefined >")  # only displays name of variable
                 return 0
+
 
 ######################
 # MAIN # MAIN # MAIN #
 ######################
 
-# runs everything to collect user inputs and output results from user inputs
+# runs everything to collect user inputs, and output results from user inputs
 if __name__ == '__main__':
     lexer = PetLexer()
     parser = PetParser()
@@ -271,23 +273,25 @@ if __name__ == '__main__':
     print(f"Take Care Of Your New Pet")
     print(f"{status.name} Is Your Pet's Name")
     environment = {}  # all variables that are kept between each command a user makes
+    # environment stores static variables as a dictionary, so it will store the variable type and the value inside the variable
 
     # continues until an error occurs or user end process
     while True:
         try:
-            command = input(f'{status.name}: ') # the name of the programming languages changes everytime, based on your pets name
+            command = input(f'{status.name}: ')  # the name of the programming languages changes everytime, based on your pets name
 
             # tests if pet program is not alive
             if status.alive == False:
-                break # ends programming language
+                break  # ends programming language
 
         except EOFError:
-            break # ends programming language
+            break  # ends programming language
 
         # if commands form user was received
         if command:
+            print(list(lexer.tokenize(command)))  # DEBUGGING ONLY
             tree = parser.parse(lexer.tokenize(command))  # splits command between spaces
-            PetExecute(tree, environment, status)  # runs the commands
+            PetExecute(tree, environment)  # runs the commands
 
     # makes user press something ENTER before the program fully closes
     input(f'< Press ENTER To Exit >')
