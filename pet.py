@@ -1,3 +1,4 @@
+from scipy.special.cython_special import exprel
 from sly import Lexer, Parser
 from time import sleep
 import random
@@ -74,16 +75,10 @@ class PetStatus:
 #####################################
 
 class PetLexer(Lexer):
-    tokens = {NAME, INT, FLOAT, STRING, TYPE}  # categorizes of each token that will be used
+    tokens = {NAME, INT, FLOAT, STRING, TYPE, BOOL}  # categorizes of each token that will be used
     ignore = '\t '  # tokens that are ignored by the program
     literals = {'=', '+', '-', '*', '/', '%', '^',
                 '(', ')', ',', ';'}  # simple tokens that will be required constantly
-
-    # the format of NAME and STRING
-    # first [] stores start with characters and second [] stores followed by characters
-    TYPE = r'int|float|string'
-    NAME = r'[a-zA-Z][a-zA-Z0-9_]*'
-    STRING = r'\".*?\"'  # strings must be double quote with anything in it
 
     # tokens for float numbers
     @_(r'\d+\.\d+')  # any digits
@@ -98,6 +93,19 @@ class PetLexer(Lexer):
         # makes value into python format
         token.value = int(token.value)
         return token
+
+    # tokens for integer numbers
+    @_(r'true|false')  # any digits
+    def BOOL(self, token):
+        # makes value into python format
+        token.value = True if token.value == 'true' else False  # due to the weirdness of bool(), empty means false and anything means true
+        return token
+
+    # the format of NAME and STRING and all the possible variable types
+    # first [] stores start with characters and second [] stores followed by characters
+    TYPE = r'int|float|string|bool'
+    NAME = r'[a-zA-Z][a-zA-Z0-9_]*'
+    STRING = r'\".*?\"'  # strings must be double quote with anything in it
 
     # token for comments
     @_(r'#.*')
@@ -123,6 +131,7 @@ class PetParser(Parser):
     def __init__(self):
         self.environment = {}
 
+    # default statements
     @_('')
     def statement(self, parse):
         pass
@@ -153,6 +162,11 @@ class PetParser(Parser):
     @_('expr')
     def statement(self, parse):
         return parse.expr
+
+    # functions
+    @_('NAME "(" expr ")"')
+    def expr(self, parse):
+        return ('call', parse.NAME, parse.expr)
 
     # expressions and operations when dealing with math-based precedence
     # addition
@@ -210,6 +224,11 @@ class PetParser(Parser):
     def expr(self, parse):
         return 'str', parse.STRING
 
+    # simply a bool
+    @_('BOOL')
+    def expr(self, parse):
+        return 'bool', parse.BOOL
+
 ###########################################
 # PET EXECUTE # PET EXECUTE # PET EXECUTE #
 ###########################################
@@ -225,17 +244,23 @@ class PetExecute:
             print(result)
 
     def walk(self, node):
+        if node and node[0] == 'program':
+            self.walk(node[1])
+            if node[2]:
+                self.walk(node[2])
+            return
+
         print(node)  # DEBUGGING DEBUGGING DEBUGGING DEBUGGING DEBUGGING DEBUGGING
         # returns if node is already a Python-based value
-        if isinstance(node, int) or isinstance(node, float) or isinstance(node, str):
+        if isinstance(node, (int, float, str, bool)):
             return node
 
         # returns if no nodes where found
         if node == None:
             return None
 
-        # returns the value if the node is a simple number or string
-        if node[0] == 'num' or node[0] == 'str':
+        # returns the value if the node is a simple number, string, or bool
+        if node[0] == 'num' or node[0] == 'str' or node[0] == 'bool':
             return node[1]
 
         # returns the nodes value it after doing simple math
@@ -318,7 +343,23 @@ class PetExecute:
                 print(f"\033[31m< '{node[1]}' Undefined >\033[0m")  # only displays name of variable
                 return 0
 
-
+        # returns results for functions and all things functions
+        if node[0] == 'call':  # only functions
+            if node[1] == 'print':  # functions for displaying text or data
+                print("PRINTING")
+            elif node[1] == 'run':  # functions for running many lines of code together
+                node_file = self.walk(node[2])  # gets the file path given that has all the code to run
+                try:
+                    if isinstance(node_file, str) and node_file.startswith('"') and node_file.endswith('"'):
+                        with open(node_file[1:-1], 'r') as file:  # opens the file after removing the double quotation marks at the beginning and end
+                            node_texts = str.split(file.read(), '\n')  # splits each statement in the text file into its own statement
+                            for node_text in node_texts:  # goes through each statement
+                                node_tree = parser.parse(lexer.tokenize(node_text))  # splits command between spaces
+                                PetExecute(node_tree, self.environment)  # runs the commands with existing environment, parser, lexer, and everything else
+                    else:
+                        print(f"\033[31m< '{node_file}' Type Uncombatable >\033[0m")  # notifies that file must be a string
+                except FileNotFoundError:
+                    print(f"< '{node_file}' Unfound >")  # notifies if the file was not found
 
 ######################
 # MAIN # MAIN # MAIN #
