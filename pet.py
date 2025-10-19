@@ -227,7 +227,7 @@ class PetParser(Parser):
     # simply a string
     @_('STRING')
     def expr(self, parse):
-        return 'str', parse.STRING
+        return 'str', parse.STRING[1:-1] # removes quotation marks for  the stirng
 
     # simply a bool
     @_('BOOL')
@@ -245,7 +245,7 @@ class PetExecute:
         # prints results after the tree has been walked and the results of the statements have been made
         if result is not None and (isinstance(result, int) or isinstance(result, float)):
             print(result)
-        if isinstance(result, str) and result[0] == '"':  # test if a result is a string
+        if isinstance(result, str):  # test if a result is a string
             print(result)
 
     def walk(self, node):
@@ -315,16 +315,22 @@ class PetExecute:
         # stores data inside variables inside the environment when declared
         if node[0] == 'var_declare':
             # type casting
-            node_variable = self.walk(node[3])  # gets the value for testing and storing in environment
-            if node[1] == 'float' and isinstance(node_variable, int):
-                node_variable = float(node_variable)  # changes int to float
-            elif node[1] == 'int' and isinstance(node_variable, float):
+            try:
+                node_variable = self.walk(node[3])  # gets the value for testing and storing in environment
+                if node[1] == 'float' and isinstance(node_variable, int):
+                    node_variable = float(node_variable)  # changes int to float
+                elif node[1] == 'int' and isinstance(node_variable, float):
+                    print(f"\033[33m< 'Converted '{node_variable}' To '{int(node_variable)}' >\033[0m")  # notifies that float was changed to int
+                    node_variable = int(node_variable)  # changes float to in
+                elif node[1] == 'string' and isinstance(node_variable, str):
+
+                # stores value
+                environmental_variable = {'type': node[1], 'value': node_variable}
+                self.environment[node[2]] = environmental_variable
+                return node[2]
+            except (ValueError, TypeError): # happens if the value that has operations preformed on it is the wrong type or if the value is invalid
                 print(f"\033[33m< 'Converted '{node_variable}' To '{int(node_variable)}' >\033[0m")  # notifies that float was changed to int
-                node_variable = int(node_variable)  # changes float to int
-            # stores value
-            environmental_variable = {'type': node[1], 'value': node_variable}
-            self.environment[node[2]] = environmental_variable
-            return node[2]
+
 
         # returns and stores data inside variables that are stored in the environment
         # only works for variables that already exist
@@ -357,8 +363,8 @@ class PetExecute:
             elif node[1] == 'run':  # functions for running many lines of code together
                 node_file = self.walk(node[2])  # gets the file path given that has all the code to run
                 try:
-                    if isinstance(node_file, str) and node_file.startswith('"') and node_file.endswith('"'):
-                        with open(node_file[1:-1], 'r') as file:  # opens the file after removing the double quotation marks at the beginning and end
+                    if isinstance(node_file, str):
+                        with open(node_file, 'r') as file:  # opens the file after removing the double quotation marks at the beginning and end
                             node_texts = str.split(file.read(), '\n')  # splits each statement in the text file into its own statement
                             for node_text in node_texts:  # goes through each statement
                                 node_tree = parser.parse(lexer.tokenize(node_text))  # splits command between spaces
