@@ -95,7 +95,7 @@ class PetLexer(Lexer):
         return token
 
     # tokens for integer numbers
-    @_(r'true|false')  # any digits
+    @_(r'true|false')  # true or false
     def BOOL(self, token):
         # makes value into python format
         token.value = True if token.value == 'true' else False  # due to the weirdness of bool(), empty means false and anything means true
@@ -162,6 +162,11 @@ class PetParser(Parser):
     @_('expr')
     def statement(self, parse):
         return parse.expr
+
+    # changing variable types
+    @_('TYPE "(" expr ")"')
+    def expr(self, parse):
+        return ('call', parse.TYPE, parse.expr)
 
     # functions
     @_('NAME "(" expr ")"')
@@ -346,7 +351,9 @@ class PetExecute:
         # returns results for functions and all things functions
         if node[0] == 'call':  # only functions
             if node[1] == 'print':  # functions for displaying text or data
-                print("PRINTING")
+                print(self.walk(node[2]))  # prints out the exact same as print in python
+            elif node[1] == 'input':  # functions for asking and receiving user data or input
+                return input(self.walk(node[2]))  # gets the argument inside the input method for displaying and returns a users response
             elif node[1] == 'run':  # functions for running many lines of code together
                 node_file = self.walk(node[2])  # gets the file path given that has all the code to run
                 try:
@@ -360,6 +367,15 @@ class PetExecute:
                         print(f"\033[31m< '{node_file}' Type Uncombatable >\033[0m")  # notifies that file must be a string
                 except FileNotFoundError:
                     print(f"< '{node_file}' Unfound >")  # notifies if the file was not found
+            # all below are used to change the variable type
+            elif node[1] == 'int':  # functions for changed variable types to int
+                return int(self.walk(node[2]))  # gets the argument inside and converts the variable into an integer
+            elif node[1] == 'float':  # functions for changed variable types to float
+                return float(self.walk(node[2]))  # gets the argument inside and converts the variable into a float
+            elif node[1] == 'string':  # functions for changed variable types to string
+                return str(self.walk(node[2]))  # gets the argument inside and converts the variable into a string
+            elif node[1] == 'bool':  # functions for changed variable types to bool
+                return bool(self.walk(node[2]))  # gets the argument inside and converts the variable into a bool
 
 ######################
 # MAIN # MAIN # MAIN #
@@ -367,6 +383,7 @@ class PetExecute:
 
 # runs everything to collect user inputs, and output results from user inputs
 if __name__ == '__main__':
+
     lexer = PetLexer()
     parser = PetParser()
     status = PetStatus()
