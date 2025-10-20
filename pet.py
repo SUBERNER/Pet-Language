@@ -227,7 +227,7 @@ class PetParser(Parser):
     # simply a string
     @_('STRING')
     def expr(self, parse):
-        return 'str', parse.STRING[1:-1] # removes quotation marks for  the stirng
+        return 'str', parse.STRING[1:-1]  # removes quotation marks for  the stirng
 
     # simply a bool
     @_('BOOL')
@@ -242,11 +242,14 @@ class PetExecute:
     def __init__(self, tree, environment):  #
         self.environment = environment  # stores the variables
         result = self.walk(tree)  # returns the full abstract syntax tree holding the split statements form the parser
+        '''
+        REMOVING FOR NOW AS THIS WAS MENT BEFORE THE PRINT AND RUN METHODS
         # prints results after the tree has been walked and the results of the statements have been made
         if result is not None and (isinstance(result, int) or isinstance(result, float)):
             print(result)
         if isinstance(result, str):  # test if a result is a string
             print(result)
+        '''
 
     def walk(self, node):
         if node and node[0] == 'program':
@@ -315,22 +318,29 @@ class PetExecute:
         # stores data inside variables inside the environment when declared
         if node[0] == 'var_declare':
             # type casting
+            node_variable = self.walk(node[3])  # gets the value for testing and storing in environment
             try:
-                node_variable = self.walk(node[3])  # gets the value for testing and storing in environment
-                if node[1] == 'float' and isinstance(node_variable, int):
-                    node_variable = float(node_variable)  # changes int to float
-                elif node[1] == 'int' and isinstance(node_variable, float):
-                    print(f"\033[33m< 'Converted '{node_variable}' To '{int(node_variable)}' >\033[0m")  # notifies that float was changed to int
-                    node_variable = int(node_variable)  # changes float to in
-                elif node[1] == 'string' and isinstance(node_variable, str):
-
+                # makes sure types are correct
+                if node[1] == 'int':
+                    if isinstance(node_variable, float):
+                        print(f"\033[33m< 'Converted '{node_variable}' To '{int(node_variable)}' >\033[0m")  # notifies that float was changed to int
+                    node_variable = int(node_variable)  # changes to int
+                if node[1] == 'float':
+                    if isinstance(node_variable, int):
+                        print(f"\033[33m< 'Converted '{node_variable}' To '{float(node_variable)}' >\033[0m")  # notifies that int was changed to float
+                    node_variable = float(node_variable)  # changes to float
+                elif node[1] == 'string':
+                    node_variable = str(node_variable)   # changes to string
+                elif node[1] == 'bool':
+                    if isinstance(node_variable, (int, float, str)):  # notifies how the other value was converted if converted into a bool
+                        print(f"\033[33m< 'Converted '{node_variable}' To '{bool(node_variable)}' >\033[0m")  # notifies that int was changed to float
+                    node_variable = bool(node_variable)   # changes to bool
                 # stores value
                 environmental_variable = {'type': node[1], 'value': node_variable}
                 self.environment[node[2]] = environmental_variable
                 return node[2]
-            except (ValueError, TypeError): # happens if the value that has operations preformed on it is the wrong type or if the value is invalid
-                print(f"\033[33m< 'Converted '{node_variable}' To '{int(node_variable)}' >\033[0m")  # notifies that float was changed to int
-
+            except (ValueError, TypeError):  # happens if the value that has operations preformed on it is the wrong type or if the value is invalid
+                print(f"\033[33m< {node_variable}' To '{type(node_variable)}' Uncombatable >\033[0m")  # notifies that float was changed to int
 
         # returns and stores data inside variables that are stored in the environment
         # only works for variables that already exist
