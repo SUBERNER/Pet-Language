@@ -166,12 +166,12 @@ class PetParser(Parser):
     # changing variable types
     @_('TYPE "(" expr ")"')
     def expr(self, parse):
-        return ('call', parse.TYPE, parse.expr)
+        return 'call', parse.TYPE, parse.expr
 
     # functions
     @_('NAME "(" expr ")"')
     def expr(self, parse):
-        return ('call', parse.NAME, parse.expr)
+        return 'call', parse.NAME, parse.expr
 
     # expressions and operations when dealing with math-based precedence
     # addition
@@ -233,6 +233,27 @@ class PetParser(Parser):
     @_('BOOL')
     def expr(self, parse):
         return 'bool', parse.BOOL
+
+    # everything below this is for handling lists and arrays of values or operations
+    # goes though each group or expr in that are back to back between ','
+    # determining if groups exist, the length of the groups, and then putting all the items in a group together
+    @_('expr')
+    def group(self, parse):
+        return 'group', parse.expr, None
+
+    @_('group "," expr')
+    def group(self, parse):
+        return 'group', parse.group, parse.expr
+
+    # empty lists
+    @_("[""]")
+    def expr(self, parse):
+        return 'array', []  # returns an empty list
+
+    # non-empty list
+    @_('"[" item "]"')
+    def expr(self, parse):
+        return 'list',  # returns
 
 ###########################################
 # PET EXECUTE # PET EXECUTE # PET EXECUTE #
