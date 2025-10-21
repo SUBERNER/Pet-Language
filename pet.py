@@ -78,7 +78,7 @@ class PetLexer(Lexer):
     tokens = {NAME, INT, FLOAT, STRING, TYPE, BOOL}  # categorizes of each token that will be used
     ignore = '\t '  # tokens that are ignored by the program
     literals = {'=', '+', '-', '*', '/', '%', '^',
-                '(', ')', ',', ';'}  # simple tokens that will be required constantly
+                '(', ')', '[', ']', ',', ';'}  # simple tokens that will be required constantly
 
     # tokens for float numbers
     @_(r'\d+\.\d+')  # any digits
@@ -227,7 +227,7 @@ class PetParser(Parser):
     # simply a string
     @_('STRING')
     def expr(self, parse):
-        return 'str', parse.STRING[1:-1]  # removes quotation marks for  the stirng
+        return 'str', parse.STRING[1:-1]  # removes quotation marks for  the string
 
     # simply a bool
     @_('BOOL')
@@ -250,6 +250,7 @@ class PetExecute:
         if isinstance(result, str):  # test if a result is a string
             print(result)
         '''
+        print(result)  # DEBUGGING DEBUGGING DEBUGGING DEBUGGING DEBUGGING DEBUGGING
 
     def walk(self, node):
         if node and node[0] == 'program':
@@ -319,6 +320,7 @@ class PetExecute:
         if node[0] == 'var_declare':
             # type casting
             node_variable = self.walk(node[3])  # gets the value for testing and storing in environment
+            print(f"NODE: {node_variable}")
             try:
                 # makes sure types are correct
                 if node[1] == 'int':
@@ -333,7 +335,7 @@ class PetExecute:
                     node_variable = str(node_variable)   # changes to string
                 elif node[1] == 'bool':
                     if isinstance(node_variable, (int, float, str)):  # notifies how the other value was converted if converted into a bool
-                        print(f"\033[33m< 'Converted '{node_variable}' To '{bool(node_variable)}' >\033[0m")  # notifies that int was changed to float
+                        print(f"\033[33m< 'Converted '{node_variable}' To '{bool(node_variable)}' >\033[0m")  # notifies that anything was changed to bool
                     node_variable = bool(node_variable)   # changes to bool
                 # stores value
                 environmental_variable = {'type': node[1], 'value': node_variable}
@@ -346,12 +348,22 @@ class PetExecute:
         # only works for variables that already exist
         if node[0] == 'var_assign':
             # type casting
+            # also displays if the value changed in anyway when changing its type
             node_variable = self.walk(node[2])  # gets the value for testing and storing in environment
-            if self.environment[node[1]]['type'] == 'float' and isinstance(node_variable, int):  # searches for the variable's type in the environment
+            if self.environment[node[1]]['type'] == 'int':  # searches for the variable's type in the environment
+                if isinstance(node_variable, float):  # notifies how the other value was converted if converted into a bool
+                    print(f"\033[33m< 'Converted '{node_variable}' To '{int(node_variable)}' >\033[0m")  # notifies that float was changed to int
+                node_variable = int(node_variable)  # changes to int
+            elif self.environment[node[1]]['type'] == 'float':  # searches for the variable's type in the environment
+                if isinstance(node_variable, int):
+                    print(f"\033[33m< 'Converted '{node_variable}' To '{float(node_variable)}' >\033[0m")  # notifies that int was changed to float
                 node_variable = float(node_variable)  # changes int to float
-            elif self.environment[node[1]]['type'] == 'int' and isinstance(node_variable, float):  # searches for the variable's type in the environment
-                print(f"\033[33m< 'Converted '{node_variable}' To '{int(node_variable)}' >\033[0m")  # notifies that float was changed to int
-                node_variable = int(node_variable)  # changes float to int
+            elif self.environment[node[1]]['type'] == 'string':  # searches for the variable's type in the environment
+                node_variable = str(node_variable)  # changes to string
+            elif self.environment[node[1]]['type'] == 'bool':  # searches for the variable's type in the environment
+                if isinstance(node_variable, (int, float, str)):  # notifies how the other value was converted if converted into a bool
+                    print(f"\033[33m< 'Converted '{node_variable}' To '{bool(node_variable)}' >\033[0m")  # notifies that types were changed to bool
+                node_variable = str(node_variable)  # changes to bool
             # stores value
             self.environment[node[1]]['value'] = node_variable
             return node[1]
@@ -392,6 +404,8 @@ class PetExecute:
                 return str(self.walk(node[2]))  # gets the argument inside and converts the variable into a string
             elif node[1] == 'bool':  # functions for changed variable types to bool
                 return bool(self.walk(node[2]))  # gets the argument inside and converts the variable into a bool
+            elif node[1] == 'type':  # functions to see what kind of type a variable is
+                return type(self.walk((node[2]))).__name__  # gets the argument inside and returns what type the value is
 
 ######################
 # MAIN # MAIN # MAIN #
