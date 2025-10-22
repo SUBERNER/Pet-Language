@@ -75,7 +75,7 @@ class PetStatus:
 #####################################
 
 class PetLexer(Lexer):
-    tokens = {NAME, INT, FLOAT, STRING, TYPE, BOOL}  # categorizes of each token that will be used
+    tokens = {NAME, INT, FLOAT, STRING, BOOL, TYPE}  # categorizes of each token that will be used
     ignore = '\t '  # tokens that are ignored by the program
     literals = {'=', '+', '-', '*', '/', '%', '^',
                 '(', ')', '[', ']', ',', ';'}  # simple tokens that will be required constantly
@@ -103,7 +103,7 @@ class PetLexer(Lexer):
 
     # the format of NAME and STRING and all the possible variable types
     # first [] stores start with characters and second [] stores followed by characters
-    TYPE = r'int|float|string|bool'
+    TYPE = r'int|float|string|bool|list'
     NAME = r'[a-zA-Z][a-zA-Z0-9_]*'
     STRING = r'\".*?\"'  # strings must be double quote with anything in it
 
@@ -227,7 +227,7 @@ class PetParser(Parser):
     # simply a string
     @_('STRING')
     def expr(self, parse):
-        return 'str', parse.STRING[1:-1]  # removes quotation marks for  the string
+        return 'str', parse.STRING[1:-1]  # removes quotation marks for the string
 
     # simply a bool
     @_('BOOL')
@@ -255,6 +255,11 @@ class PetParser(Parser):
     @_('"[" group "]"')
     def expr(self, parse):
         return 'list', parse.group  # returns
+
+    # getting data from list
+    @_('NAME "[" INT "]"')
+    def expr(self, parse):
+        return 'list_stuff'  # returns
 
 
 ###########################################
@@ -343,7 +348,7 @@ class PetExecute:
         if node[0] == 'var_declare':
             # type casting
             node_variable = self.walk(node[3])  # gets the value for testing and storing in environment
-            print(f"NODE: {node_variable}")
+            print(f"NODE: {node_variable}")  # DEBUGGING DEBUGGING DEBUGGING DEBUGGING DEBUGGING DEBUGGING
             try:
                 # makes sure types are correct
                 if node[1] == 'int':
@@ -360,6 +365,10 @@ class PetExecute:
                     if isinstance(node_variable, (int, float, str)):  # notifies how the other value was converted if converted into a bool
                         print(f"\033[33m< 'Converted '{node_variable}' To '{bool(node_variable)}' >\033[0m")  # notifies that anything was changed to bool
                     node_variable = bool(node_variable)   # changes to bool
+                elif node[1] == 'list':
+                    if isinstance(node_variable, (int, float, str, bool)):  # notifies how the other value was entered in a list
+                        print(f"\033[33m< 'Converted '{node_variable}' To '{[node_variable]}' >\033[0m")  # notifies that anything was put into a list
+                        node_variable = [node_variable]  # changes node variable into a list
                 # stores value
                 environmental_variable = {'type': node[1], 'value': node_variable}
                 self.environment[node[2]] = environmental_variable
@@ -387,6 +396,10 @@ class PetExecute:
                 if isinstance(node_variable, (int, float, str)):  # notifies how the other value was converted if converted into a bool
                     print(f"\033[33m< 'Converted '{node_variable}' To '{bool(node_variable)}' >\033[0m")  # notifies that types were changed to bool
                 node_variable = str(node_variable)  # changes to bool
+            elif self.environment[node[1]]['type'] == 'list':  # searches for the variable's type in the environment
+                if isinstance(node_variable, (int, float, str, bool)):  # notifies how the other value was entered in a list
+                    print(f"\033[33m< 'Converted '{node_variable}' To '{[node_variable]}' >\033[0m")  # notifies that anything was put into a list
+                    node_variable = [node_variable]  # changes node variable into a list
             # stores value
             self.environment[node[1]]['value'] = node_variable
             return node[1]
