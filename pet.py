@@ -239,21 +239,23 @@ class PetParser(Parser):
     # determining if groups exist, the length of the groups, and then putting all the items in a group together
     @_('expr')
     def group(self, parse):
-        return 'group', parse.expr, None
+        return [parse.expr]  # creates a new list that will added over time with the below method
 
     @_('group "," expr')
     def group(self, parse):
-        return 'group', parse.group, parse.expr
+        parse.group.append(parse.expr)  # adds the new item the existing list
+        return parse.group
 
     # empty lists
-    @_("[""]")
+    @_('"[" "]"')
     def expr(self, parse):
-        return 'array', []  # returns an empty list
+        return 'list', []  # returns an empty list
 
     # non-empty list
-    @_('"[" item "]"')
+    @_('"[" group "]"')
     def expr(self, parse):
-        return 'list',  # returns
+        return 'list', parse.group  # returns
+
 
 ###########################################
 # PET EXECUTE # PET EXECUTE # PET EXECUTE #
