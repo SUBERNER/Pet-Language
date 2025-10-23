@@ -257,9 +257,9 @@ class PetParser(Parser):
         return 'list', parse.group  # returns
 
     # getting data from list
-    @_('NAME "[" INT "]"')
+    @_('NAME "[" expr "]"')
     def expr(self, parse):
-        return 'list_stuff'  # returns
+        return parse.NAME, parse.expr  # returns
 
 
 ###########################################
