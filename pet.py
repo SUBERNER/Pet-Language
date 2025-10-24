@@ -10,7 +10,7 @@ import random
 class PetStatus:
     # stores the data of each need and how they work
     class Need():
-        def __init__(self, alive: bool, current: float = 1, action: str = '', minmax: tuple[float, float] = tuple[0, 2], drain: float = 0.1, gain: float = 0.1, delay: float = 1):
+        def __init__(self, alive: bool, current: float = 1, action: str = '', minmax: tuple[float, float] = (0, 2), drain: float = 0.1, gain: float = 0.1, delay: float = 1):
             self._alive = alive  # a reference to the alive value in pet
             self._current = current  # how much of the need is fulfilled
             self._action = action  # the string that notifies the user what need is being worked with
@@ -18,6 +18,10 @@ class PetStatus:
             self._drain = drain  # how much each token drains
             self._gain = gain  # how much satisfying the need gives back
             self._delay = delay  # the length of the delay when satisfying the need
+
+        def check(self):
+            # checks the current amount of the need
+            return self._current
 
         def death(self):
             # method happens once a pet dies do to a need going to zero
@@ -30,34 +34,36 @@ class PetStatus:
             # checks if needs are below the minimum. if below the minimum, then the pet dies
             if self._current < self._minmax[0]:
                 if self._alive:
-                    death() # causes pet to die and stopping the program
+                    self.death() # causes pet to die and stopping the program
             # checks if needs are above the maximum. if below the maximum, then cap
             elif self._current > self._minmax[1]:
                 self._current = self._minmax[1]  # sets current back within the maximum limits
 
-        def current_calculation(self, value: float = 0, severity: float = 1, offset: tuple[float, float] = tuple[0, 0]):
+        def current_calculation(self, value: float = 0, severity: float = 1, offset: tuple[float, float] = (0, 0)):
             # calculations and alterations that can be done to give more power to how current is altered
             return (value * severity) + random.uniform(offset[0], offset[1])
 
-        def drain(self, severity: float = 1, offset: tuple[float, float] = tuple[0, 0]):
+        def delay(self, severity: float = 1, offset: tuple[float, float] = (0, 0)):
+            # severity is how much more or less the delay effects the pet
+            print(f"< Pet's Currently {self._action} >")  # displays that the need is being taken care of
+            sleep(self.current_calculation(self._delay, severity, offset))  # the duration in seconds the delay will happen for the action
+            print(f"< Pet's Finished {self._action} >")  # displays that the need is being taken care of
+
+        def drain(self, severity: float = 1, offset: tuple[float, float] = (0, 0)):
             # severity is how much a token will drain a need
             # offset is how much it can randomly adjust the amount drained from the needs current
-            self._current -= current_calculation(self._drain, severity, offset)
+            self._current -= self.current_calculation(self._drain, severity, offset)
             # checks if needs are below the minimum
-            current_test()
+            self.current_test()
             print(self._current)
 
-        def gain(self, severity: float = 1, offset: tuple[float, float] = tuple[0, 0]):
+        def gain(self, severity: float = 1, offset: tuple[float, float] = (0, 0)):
             # severity is how much a token will gain a need
             # offset is how much it can randomly adjust the amount given to the needs current
-            self._current -= current_calculation(self._gain, severity, offset)
+            self._current -= self.current_calculation(self._gain, severity, offset)
             # checks if needs are above maximum
-            current_test()
-
-        def delay(self, severity: float = 1, offset: tuple[float, float] = tuple[0, 0]):
-            # severity is how much more or less the delay effects the pet
-            print(f"< Pet's {self._action} >")  # displays that the need is being taken care of
-            time.sleep(current_calculation(self._delay, severity, offset))  # the duration in seconds the delay will happen for the action
+            self.current_test()
+            self.delay() # adds a delay to make sure users cannot span giving there pet needs
 
     # generates a random name every time the program is ran, purly visual
     name = random.choice(["Luna", "Oliver", "Mittens", "Leo", "Bella", "Shadow", "Simba", "Whiskers", "Chloe", "Jasper", "Nala", "Smokey", "Oreo", "Pumpkin", "Milo", "Patches", "Tigger", "Cleo", "Cosmo", "Ginger", "Zelda", "Rocky", "Binx", "Pepper", "Waffles", "Sir Reginald Fluffington III", "Felix", "Salem", "Goose", "Garfield", "Bagheera", "Gizmo", "Cinder", "Willow", "Hazel", "Olive", "Penelope", "Zoe", "Midnight", "Onyx", "Sterling", "Orion", "Jinx", "Figaro", "Cheshire", "Artemis",
@@ -69,6 +75,7 @@ class PetStatus:
     hunger = Need(alive, 1, "Eating", (0, 1), 0.02, 0.25, 10)  # stores how hungry the pet is
     thirst = Need(alive, 1, "Drinking", (0, 1), 0.05, 0.5, 2)  # stores how thirsty the pet is
     energy = Need(alive, 1, "Resting", (0, 1), 0.01, 0.5, 30)  # stores how much energy the pet has left
+    needs_list = {'hunger': hunger, 'thirst': thirst, 'energy': energy} # PUT ALL NEEDS HERE
 
 #####################################
 # PET LEXER # PET LEXER # PET LEXER #
@@ -267,7 +274,7 @@ class PetParser(Parser):
 ###########################################
 
 class PetExecute:
-    def __init__(self, tree, environment):  #
+    def __init__(self, tree, environment, status):  #
         self.environment = environment  # stores the variables
         result = self.walk(tree)  # returns the full abstract syntax tree holding the split statements form the parser
         '''
@@ -374,7 +381,7 @@ class PetExecute:
                 self.environment[node[2]] = environmental_variable
                 return node[2]
             except (ValueError, TypeError):  # happens if the value that has operations preformed on it is the wrong type or if the value is invalid
-                print(f"\033[33m< {node_variable}' To '{type(node_variable)}' Uncombatable >\033[0m")  # notifies that float was changed to int
+                print(f"\033[33m< '{node_variable}' To '{type(node_variable)}' Uncombatable >\033[0m")  # notifies that float was changed to int
 
         # returns and stores data inside variables that are stored in the environment
         # only works for variables that already exist
@@ -431,6 +438,18 @@ class PetExecute:
                         print(f"\033[31m< '{node_file}' Type Uncombatable >\033[0m")  # notifies that file must be a string
                 except FileNotFoundError:
                     print(f"< '{node_file}' Unfound >")  # notifies if the file was not found
+            elif node[1] == 'replenish': # used to replenish stats for the pet
+                node_need = self.walk(node[2]) # finds the need that will be replenished
+                try:
+                    status.needs_list[node_need].gain() # replenishes the pets needs by giving pets more of the need, allowing users to run code for longer
+                except KeyError: # if the need does not exist:
+                    print(f"\033[33m< '{node_need}' Need Nonexistent >\033[0m")  # notifies that file must be a string
+            elif node[1] == 'check': # used to check the stats for the pet
+                node_need = self.walk(node[2])  # finds the need that will be checked
+                try:
+                    return status.needs_list[node_need].check()  # replenishes the pets needs by giving pets more of the need, allowing users to run code for longer
+                except KeyError:  # if the need does not exist:
+                    print(f"\033[33m< '{node_need}' Need Nonexistent >\033[0m")  # notifies that file must be a string
             # all below are used to change the variable type
             elif node[1] == 'int':  # functions for changed variable types to int
                 return int(self.walk(node[2]))  # gets the argument inside and converts the variable into an integer
@@ -442,6 +461,9 @@ class PetExecute:
                 return bool(self.walk(node[2]))  # gets the argument inside and converts the variable into a bool
             elif node[1] == 'type':  # functions to see what kind of type a variable is
                 return type(self.walk((node[2]))).__name__  # gets the argument inside and returns what type the value is
+
+        # if nothing came form the walk method
+        return None
 
 ######################
 # MAIN # MAIN # MAIN #
@@ -474,7 +496,7 @@ if __name__ == '__main__':
         if command:
             print(list(lexer.tokenize(command)))  # DEBUGGING DEBUGGING DEBUGGING DEBUGGING DEBUGGING DEBUGGING
             tree = parser.parse(lexer.tokenize(command))  # splits command between spaces
-            PetExecute(tree, environment)  # runs the commands
+            PetExecute(tree, environment, status)  # runs the commands
 
     # makes user press something ENTER before the program fully closes
     input(f'\033[31< Press ENTER To Exit >\033[0m')
