@@ -2,6 +2,7 @@ from scipy.special.cython_special import exprel
 from sly import Lexer, Parser
 from time import sleep
 import random
+import logging
 
 ########################################
 # PET STATUS # PET STATUS # PET STATUS #
@@ -23,6 +24,10 @@ class PetStatus:
             # checks the current amount of the need
             return self._current
 
+        def alive(self):
+            # checks if the need has caused the pet to die or not
+            return self._alive
+
         def death(self):
             # method happens once a pet dies do to a need going to zero
             print(f"< PET DEAD >")
@@ -34,7 +39,7 @@ class PetStatus:
             # checks if needs are below the minimum. if below the minimum, then the pet dies
             if self._current < self._minmax[0]:
                 if self._alive:
-                    self.death() # causes pet to die and stopping the program
+                    self.death()  # causes pet to die and stopping the program
             # checks if needs are above the maximum. if below the maximum, then cap
             elif self._current > self._minmax[1]:
                 self._current = self._minmax[1]  # sets current back within the maximum limits
@@ -60,32 +65,41 @@ class PetStatus:
         def gain(self, severity: float = 1, offset: tuple[float, float] = (0, 0)):
             # severity is how much a token will gain a need
             # offset is how much it can randomly adjust the amount given to the needs current
-            self._current -= self.current_calculation(self._gain, severity, offset)
+            self._current += self.current_calculation(self._gain, severity, offset)
             # checks if needs are above maximum
             self.current_test()
-            self.delay() # adds a delay to make sure users cannot span giving there pet needs
+            self.delay()  # adds a delay to make sure users cannot span giving there pet needs
 
     # generates a random name every time the program is ran, purly visual
     name = random.choice(["Luna", "Oliver", "Mittens", "Leo", "Bella", "Shadow", "Simba", "Whiskers", "Chloe", "Jasper", "Nala", "Smokey", "Oreo", "Pumpkin", "Milo", "Patches", "Tigger", "Cleo", "Cosmo", "Ginger", "Zelda", "Rocky", "Binx", "Pepper", "Waffles", "Sir Reginald Fluffington III", "Felix", "Salem", "Goose", "Garfield", "Bagheera", "Gizmo", "Cinder", "Willow", "Hazel", "Olive", "Penelope", "Zoe", "Midnight", "Onyx", "Sterling", "Orion", "Jinx", "Figaro", "Cheshire", "Artemis",
                           "Max", "Buddy", "Lucy", "Charlie", "Daisy", "Cooper", "Sadie", "Bear", "Molly", "Zeus", "Ruby", "Duke", "Penny", "Scout", "Jack", "Stella", "Winston", "Bandit", "Finn", "Mocha", "Gus", "Apollo", "Biscuit", "Marley", "Chewie", "Professor Wigglebottom", "Bailey", "Koda", "Riley", "Thor", "Loki", "Bruno", "Toby", "Murphy", "Otis", "Hank", "Harley", "Gunner", "Samson", "Beau", "Ace", "Buster", "Diesel", "Titan", "Roxy", "Sasha", "Kona", "Zara",
                           "Kiwi", "Sunny", "Pip", "Echo", "Skye", "Mango", "Percy", "Indigo", "Robin", "Zazu", "Jade", "Sparrow", "Chirpy", "Finch", "Iago", "Zephyr", "Polly", "Hedwig", "Pico", "Bluebell", "Oscar", "Nimbus", "Peanut", "Phoenix", "Tweetie", "Captain Feathers", "Rio", "Jewel", "Kiko", "Petey", "Cypress", "Lark", "Dove", "Merlin", "Griffin", "Comet", "Galaxy", "Starlight", "Quill", "Soren", "Gylfie",
                           "Squeaky", "Nibbles", "Cheddar", "Remy", "Stuart", "Fievel", "Algernon", "Splinter", "Pinky", "Brain", "Nugget", "Domino", "Barnaby", "Mortimer", "Gouda", "Mochi", "Rizzo", "Popcorn", "Einstein", "Marble", "Basil", "Despereaux", "Scabbers", "Crouton", "Pip-squeak", "Lord Squeakington", "Templeton", "Nicodemus", "Timothy", "Gadget", "Zipper", "Monterey", "Colby", "Provolone", "Feta", "Parsley", "Twitch", "Scamp", "Gus-Gus", "Jaq", "Ratthew"])
-    alive = True  # notifies the program if the pet is alive and if the code should continue running
+    alive = True  # this is used to check if the program should end
     # list of all the needs together
-    hunger = Need(alive, 1, "Eating", (0, 1), 0.02, 0.25, 10)  # stores how hungry the pet is
-    thirst = Need(alive, 1, "Drinking", (0, 1), 0.05, 0.5, 2)  # stores how thirsty the pet is
-    energy = Need(alive, 1, "Resting", (0, 1), 0.01, 0.5, 30)  # stores how much energy the pet has left
-    needs_list = {'hunger': hunger, 'thirst': thirst, 'energy': energy} # PUT ALL NEEDS HERE
+    hunger = Need(True, 1, "Eating", (0, 1), 0.02, 0.25, 10)  # stores how hungry the pet is
+    thirst = Need(True, 1, "Drinking", (0, 1), 0.05, 0.5, 2)  # stores how thirsty the pet is
+    energy = Need(True, 1, "Resting", (0, 1), 0.01, 0.5, 30)  # stores how much energy the pet has left
+    # the dictionary here is only used for easier searching for the needs
+    needs_list = {'hunger': hunger, 'thirst': thirst, 'energy': energy}  # PUT ALL NEEDS HERE
 
 #####################################
 # PET LEXER # PET LEXER # PET LEXER #
 #####################################
 
 class PetLexer(Lexer):
-    tokens = {NAME, INT, FLOAT, STRING, BOOL, TYPE}  # categorizes of each token that will be used
+    tokens = {NAME, INT, FLOAT, STRING, BOOL, TYPE, CONDITION, ET, NE, LT, LE, GT, GE}  # categorizes of each token that will be used
     ignore = '\t '  # tokens that are ignored by the program
-    literals = {'=', '+', '-', '*', '/', '%', '^',
-                '(', ')', '[', ']', ',', ';'}  # simple tokens that will be required constantly
+    literals = {'=', '+', '-', '*', '/', '%', '^', '>', '<',
+                '(', ')', '[', ']', ',', ':', ';', '{', '}'}  # simple tokens that will be required constantly
+
+    # statement operation tokens
+    ET = r'=='  # equal to
+    NE = r'!='  # not equal to
+    LT = r'<<'  # less than
+    LE = r'<='  # less than or equal to
+    GT = r'>>'  # greater than
+    GE = r'>='  # greater than or equal to
 
     # tokens for float numbers
     @_(r'\d+\.\d+')  # any digits
@@ -111,6 +125,7 @@ class PetLexer(Lexer):
     # the format of NAME and STRING and all the possible variable types
     # first [] stores start with characters and second [] stores followed by characters
     TYPE = r'int|float|string|bool|list'
+    CONDITION = r'if|else|while'
     NAME = r'[a-zA-Z][a-zA-Z0-9_]*'
     STRING = r'\".*?\"'  # strings must be double quote with anything in it
 
@@ -170,6 +185,12 @@ class PetParser(Parser):
     def statement(self, parse):
         return parse.expr
 
+    # used when there is more code to be executed after the value is true or false,
+    # this is used when you want to run code with this, usually with run()
+    @_('CONDITION "(" expr ")" ":" statement')
+    def statement(self, parse):
+        return parse.CONDITION, parse.expr, parse.statement
+
     # changing variable types
     @_('TYPE "(" expr ")"')
     def expr(self, parse):
@@ -216,10 +237,56 @@ class PetParser(Parser):
     def expr(self, parse):
         return parse.expr
 
+    # groups of math or operations within ()
+    @_('"(" expr ")"')
+    def expr(self, parse):
+        return parse.expr
+
+    # used when return a true or false value for expressions not to be its own statement
+    # used only when a true or false result is needed for an expression
+    @_('CONDITION "(" expr ")"')
+    def expr(self, parse):
+        return 'condition', parse.CONDITION, parse.expr
+
+    # equal to statement operations
+    @_('expr ET expr')
+    def expr(self, parse):
+        return 'eqt', parse.expr0, parse.expr1
+
+    # not equal to statement operations
+    @_('expr NE expr')
+    def expr(self, parse):
+        return 'not', parse.expr0, parse.expr1
+
+    # less than statement operations
+    @_('expr LT expr')
+    def expr(self, parse):
+        return 'les', parse.expr0, parse.expr1
+
+    # less than or equal to statement operations
+    @_('expr LE expr')
+    def expr(self, parse):
+        return 'leq', parse.expr0, parse.expr1
+
+    # greater than statement operations
+    @_('expr GT expr')
+    def expr(self, parse):
+        return 'gre', parse.expr0, parse.expr1
+
+    # greater than or equal to statement operations
+    @_('expr GE expr')
+    def expr(self, parse):
+        return 'geq', parse.expr0, parse.expr1
+
     # simply a name
     @_('NAME')
     def expr(self, parse):
         return 'var', parse.NAME
+
+    # searching data from list
+    @_('NAME "[" expr "]"')
+    def expr(self, parse):
+        return 'var', parse.NAME, parse.expr
 
     # simply a float number
     @_('FLOAT')
@@ -263,11 +330,6 @@ class PetParser(Parser):
     def expr(self, parse):
         return 'list', parse.group  # returns
 
-    # getting data from list
-    @_('NAME "[" expr "]"')
-    def expr(self, parse):
-        return parse.NAME, parse.expr  # returns
-
 
 ###########################################
 # PET EXECUTE # PET EXECUTE # PET EXECUTE #
@@ -287,7 +349,26 @@ class PetExecute:
         '''
         print(result)  # DEBUGGING DEBUGGING DEBUGGING DEBUGGING DEBUGGING DEBUGGING
 
+    # used for displaying error or warning messages and will affect your pet differently
+    def error_message(self, message: str):  # error messages will display red and instantly kill the animal
+        print(f"\033[31m< {message} >\033[0m")
+        status.alive = False
+
+    def warning_message(self, message: str):  # warning messages will display yellow and will slightly drain all needs from the pet
+        print(f"\033[33m< {message} >\033[0m")
+        status.thirst.drain(3)
+        status.hunger.drain(3)
+        status.energy.drain(3)
+
     def walk(self, node):
+        '''
+        # everytime the program walks it uses energy
+        status.energy.drain()
+        # additionally, all actions will also drain thirst and hunger, but much slower with each action draining some more thn others
+        status.hunger.drain(0.1)
+        status.thirst.drain(0.1)
+        '''
+
         if node and node[0] == 'program':
             self.walk(node[1])
             if node[2]:
@@ -296,60 +377,96 @@ class PetExecute:
 
         print(node)  # DEBUGGING DEBUGGING DEBUGGING DEBUGGING DEBUGGING DEBUGGING
         # returns if node is already a Python-based value
-        if isinstance(node, (int, float, str, bool)):
+        if isinstance(node, (int, float, str, bool, list)):
             return node
 
         # returns if no nodes where found
         if node == None:
             return None
 
-        # returns the value if the node is a simple number, string, or bool
+        # returns the value if the node is a simple number, string, bool, or list
         if node[0] == 'num' or node[0] == 'str' or node[0] == 'bool':
             return node[1]
+
+        # turns values into normal values, then reconverts them into what the parser wants to work on
+        # does this everytime a list is used
+        if node[0] == 'list':
+            node_list = []  # empty list to deconvert and reconvert the values into what the parser wants
+            # creates a normal list
+            for node_item in node[1]:
+                node_list.append(self.walk(node_item))  # converts the value parser form to a normal value
+            return node_list
 
         # returns the nodes value it after doing simple math
         if node[0] == 'add':
             node0 = self.walk(node[1])
             node1 = self.walk(node[2])
             if type(node0) == type(node1):  # ints, floats, and strings
-                return self.walk(node[1]) + self.walk(node[2])
+                return node0 + node1
             else:  # if there was a type mismatch
-                print(f"\033[31m< '{node[1][1]}' & '{node[2][1]}' Uncombatable >\033[0m")  # displays if variables are uncombatable
+                self.error_message(f"'{node0}' & '{node1}' Uncombatable")  # displays if variables are uncombatable
         elif node[0] == 'sub':
             node0 = self.walk(node[1])
             node1 = self.walk(node[2])
             if type(node0) == type(node1):  # ints, floats, and strings
-                return self.walk(node[1]) - self.walk(node[2])
+                return node0 - node1
             else:  # if there was a type mismatch
-                print(f"\033[31m< '{node[1][1]}' & '{node[2][1]}' Uncombatable >\033[0m")  # displays if variables are uncombatable
+                self.error_message(f"'{node0}' & '{node1}' Uncombatable")  # displays if variables are uncombatable
         elif node[0] == 'mul':
             node0 = self.walk(node[1])
             node1 = self.walk(node[2])
             if (isinstance(node0, (int, float)) and type(node0) == type(node1)) or ((isinstance(node0, int) and isinstance(node1, str)) or (isinstance(node0, str) and isinstance(node1, int))):  # ints and floats, or one string and one int
-                return self.walk(node[1]) * self.walk(node[2])
+                return node0 * node1
             else:  # if there was a type mismatch
-                print(f"\033[31m< '{node[1][1]}' & '{node[2][1]}' Uncombatable >\033[0m")  # displays if variables are uncombatable
+                self.error_message(f"'{node0}' & '{node1}' Uncombatable")  # displays if variables are uncombatable
         elif node[0] == 'div':
             node0 = self.walk(node[1])
             node1 = self.walk(node[2])
             if isinstance(node0, (int, float)) and type(node0) == type(node1):  # ints and floats
-                return self.walk(node[1]) / self.walk(node[2])
+                return node0 / node1
             else:  # if there was a type mismatch
-                print(f"\033[31m< '{node[1][1]}' & '{node[2][1]}' Uncombatable >\033[0m")  # displays if variables are uncombatable
+                self.error_message(f"'{node0}' & '{node1}' Uncombatable")  # displays if variables are uncombatable
         elif node[0] == 'rem':
             node0 = self.walk(node[1])
             node1 = self.walk(node[2])
             if isinstance(node0, (int, float)) and type(node0) == type(node1):  # ints and floats
-                return self.walk(node[1]) % self.walk(node[2])
+                return node0 % node1
             else:  # if there was a type mismatch
-                print(f"\033[31m< '{node[1][1]}' & '{node[2][1]}' Uncombatable >\033[0m")  # displays if variables are uncombatable
+                self.error_message(f"'{node0}' & '{node1}' Uncombatable")  # displays if variables are uncombatable
+
         elif node[0] == 'pow':
             node0 = self.walk(node[1])
             node1 = self.walk(node[2])
             if isinstance(node0, (int, float)) and type(node0) == type(node1):  # ints and floats
-                return self.walk(node[1]) ** self.walk(node[2])
+                return node0 ** node1
             else:  # if there was a type mismatch
-                print(f"\033[31m< '{node[1][1]}' & '{node[2][1]}' Uncombatable >\033[0m")  # displays if variables are uncombatable
+                self.error_message(f"'{node0}' & '{node1}' Uncombatable")  # displays if variables are uncombatable
+
+        # returns if statement is true after doing operations
+        if node[0] == 'eqt':  # equal to
+            node0 = self.walk(node[1])
+            node1 = self.walk(node[2])
+            return node0 == node1
+        if node[0] == 'not':  # not equal to
+            node0 = self.walk(node[1])
+            node1 = self.walk(node[2])
+            return node0 != node1
+        if node[0] == 'les':  # less than
+            node0 = self.walk(node[1])
+            node1 = self.walk(node[2])
+            return node0 << node1
+        if node[0] == 'leq':  # less than or equal to
+            node0 = self.walk(node[1])
+            node1 = self.walk(node[2])
+            return node0 <= node1
+        if node[0] == 'gre':  # greater than
+            node0 = self.walk(node[1])
+            node1 = self.walk(node[2])
+            return node0 >> node1
+        if node[0] == 'geq':  # greater than or equal to
+            node0 = self.walk(node[1])
+            node1 = self.walk(node[2])
+            return node0 >= node1
 
         # stores data inside variables inside the environment when declared
         if node[0] == 'var_declare':
@@ -360,28 +477,28 @@ class PetExecute:
                 # makes sure types are correct
                 if node[1] == 'int':
                     if isinstance(node_variable, float):
-                        print(f"\033[33m< 'Converted '{node_variable}' To '{int(node_variable)}' >\033[0m")  # notifies that float was changed to int
+                        self.warning_message(f"'Converted '{node_variable}' To '{int(node_variable)}'")  # notifies that float was changed to int
                     node_variable = int(node_variable)  # changes to int
                 if node[1] == 'float':
                     if isinstance(node_variable, int):
-                        print(f"\033[33m< 'Converted '{node_variable}' To '{float(node_variable)}' >\033[0m")  # notifies that int was changed to float
+                        self.warning_message(f"'Converted '{node_variable}' To '{float(node_variable)}'")  # notifies that int was changed to float
                     node_variable = float(node_variable)  # changes to float
                 elif node[1] == 'string':
                     node_variable = str(node_variable)   # changes to string
                 elif node[1] == 'bool':
                     if isinstance(node_variable, (int, float, str)):  # notifies how the other value was converted if converted into a bool
-                        print(f"\033[33m< 'Converted '{node_variable}' To '{bool(node_variable)}' >\033[0m")  # notifies that anything was changed to bool
+                        self.warning_message(f"'Converted '{node_variable}' To '{bool(node_variable)}'")  # notifies that anything was changed to bool
                     node_variable = bool(node_variable)   # changes to bool
                 elif node[1] == 'list':
                     if isinstance(node_variable, (int, float, str, bool)):  # notifies how the other value was entered in a list
-                        print(f"\033[33m< 'Converted '{node_variable}' To '{[node_variable]}' >\033[0m")  # notifies that anything was put into a list
+                        self.warning_message(f"'Converted '{node_variable}' To '{[node_variable]}'") # notifies that anything was put into a list
                         node_variable = [node_variable]  # changes node variable into a list
                 # stores value
                 environmental_variable = {'type': node[1], 'value': node_variable}
                 self.environment[node[2]] = environmental_variable
                 return node[2]
             except (ValueError, TypeError):  # happens if the value that has operations preformed on it is the wrong type or if the value is invalid
-                print(f"\033[33m< '{node_variable}' To '{type(node_variable)}' Uncombatable >\033[0m")  # notifies that float was changed to int
+                self.warning_message(f"'{node_variable}' To '{type(node_variable)}' Uncombatable") # notifies that float was changed to int
 
         # returns and stores data inside variables that are stored in the environment
         # only works for variables that already exist
@@ -391,22 +508,23 @@ class PetExecute:
             node_variable = self.walk(node[2])  # gets the value for testing and storing in environment
             if self.environment[node[1]]['type'] == 'int':  # searches for the variable's type in the environment
                 if isinstance(node_variable, float):  # notifies how the other value was converted if converted into a bool
-                    print(f"\033[33m< 'Converted '{node_variable}' To '{int(node_variable)}' >\033[0m")  # notifies that float was changed to int
+                    self.warning_message(f"Converted '{node_variable}' To '{int(node_variable)}'")  # notifies that float was changed to int
                 node_variable = int(node_variable)  # changes to int
             elif self.environment[node[1]]['type'] == 'float':  # searches for the variable's type in the environment
                 if isinstance(node_variable, int):
-                    print(f"\033[33m< 'Converted '{node_variable}' To '{float(node_variable)}' >\033[0m")  # notifies that int was changed to float
+                    self.warning_message(f"Converted '{node_variable}' To '{float(node_variable)}'")  # notifies that int was changed to float
                 node_variable = float(node_variable)  # changes int to float
             elif self.environment[node[1]]['type'] == 'string':  # searches for the variable's type in the environment
                 node_variable = str(node_variable)  # changes to string
             elif self.environment[node[1]]['type'] == 'bool':  # searches for the variable's type in the environment
                 if isinstance(node_variable, (int, float, str)):  # notifies how the other value was converted if converted into a bool
-                    print(f"\033[33m< 'Converted '{node_variable}' To '{bool(node_variable)}' >\033[0m")  # notifies that types were changed to bool
+                    self.warning_message(f"Converted '{node_variable}' To '{bool(node_variable)}'")  # notifies that types were changed to bool
                 node_variable = str(node_variable)  # changes to bool
             elif self.environment[node[1]]['type'] == 'list':  # searches for the variable's type in the environment
                 if isinstance(node_variable, (int, float, str, bool)):  # notifies how the other value was entered in a list
-                    print(f"\033[33m< 'Converted '{node_variable}' To '{[node_variable]}' >\033[0m")  # notifies that anything was put into a list
+                    self.warning_message(f"'Converted '{node_variable}' To '{[node_variable]}'")  # notifies that anything was put into a list
                     node_variable = [node_variable]  # changes node variable into a list
+
             # stores value
             self.environment[node[1]]['value'] = node_variable
             return node[1]
@@ -414,9 +532,12 @@ class PetExecute:
         # returns the value of the variable asked for
         if node[0] == 'var':
             try:
-                return self.environment[node[1]]['value']  # tries to find variable and its data
+                try:  # will attempt to check if the var is a list instead of a single variable
+                    return self.environment[node[1]]['value'][self.walk(node[2])]  # takes data from that index
+                except IndexError:  # if variable is not part of a list
+                    return self.environment[node[1]]['value']  # tries to find variable and its data
             except LookupError:  # if no variable or data was found
-                print(f"\033[31m< '{node[1]}' Undefined >\033[0m")  # only displays name of variable
+                self.error_message(f"'{node[1]}' Undefined")  # only displays name of variable
                 return 0
 
         # returns results for functions and all things functions
@@ -432,24 +553,30 @@ class PetExecute:
                         with open(node_file, 'r') as file:  # opens the file after removing the double quotation marks at the beginning and end
                             node_texts = str.split(file.read(), '\n')  # splits each statement in the text file into its own statement
                             for node_text in node_texts:  # goes through each statement
+                                # tests if pet program is not alive
+                                # goes through each need in the dictionary and tests if they are dead
+                                for need in status.needs_list.values():
+                                    if not need.alive():
+                                        status.alive = False  # pet is labeled as dead
+                                        return None  # ends the run process early due to pet dying
                                 node_tree = parser.parse(lexer.tokenize(node_text))  # splits command between spaces
-                                PetExecute(node_tree, self.environment)  # runs the commands with existing environment, parser, lexer, and everything else
+                                PetExecute(node_tree, self.environment, status)  # runs the commands with existing environment, parser, lexer, and everything else
                     else:
-                        print(f"\033[31m< '{node_file}' Type Uncombatable >\033[0m")  # notifies that file must be a string
+                        self.error_message(f"'{node_file}' Type Uncombatable")  # notifies that file must be a string
                 except FileNotFoundError:
                     print(f"< '{node_file}' Unfound >")  # notifies if the file was not found
-            elif node[1] == 'replenish': # used to replenish stats for the pet
-                node_need = self.walk(node[2]) # finds the need that will be replenished
+            elif node[1] == 'replenish':  # used to replenish stats for the pet
+                node_need = self.walk(node[2])  # finds the need that will be replenished
                 try:
-                    status.needs_list[node_need].gain() # replenishes the pets needs by giving pets more of the need, allowing users to run code for longer
-                except KeyError: # if the need does not exist:
-                    print(f"\033[33m< '{node_need}' Need Nonexistent >\033[0m")  # notifies that file must be a string
-            elif node[1] == 'check': # used to check the stats for the pet
+                    status.needs_list[node_need].gain()  # replenishes the pets needs by giving pets more of the need, allowing users to run code for longer
+                except KeyError:  # if the need does no
+                    self.warning_message(f"'{node_need}' Need Nonexistent")  # notifies that file must be a string
+            elif node[1] == 'check':  # used to check the stats for the pet
                 node_need = self.walk(node[2])  # finds the need that will be checked
                 try:
                     return status.needs_list[node_need].check()  # replenishes the pets needs by giving pets more of the need, allowing users to run code for longer
                 except KeyError:  # if the need does not exist:
-                    print(f"\033[33m< '{node_need}' Need Nonexistent >\033[0m")  # notifies that file must be a string
+                    self.warning_message(f"'{node_need}' Need Nonexistent")  # notifies that file must be a string
             # all below are used to change the variable type
             elif node[1] == 'int':  # functions for changed variable types to int
                 return int(self.walk(node[2]))  # gets the argument inside and converts the variable into an integer
@@ -461,6 +588,12 @@ class PetExecute:
                 return bool(self.walk(node[2]))  # gets the argument inside and converts the variable into a bool
             elif node[1] == 'type':  # functions to see what kind of type a variable is
                 return type(self.walk((node[2]))).__name__  # gets the argument inside and returns what type the value is
+
+        # condition statements and loops
+        if node[0] == 'if':  # if statement
+            pass
+        elif node[0] == 'while':  # while loop
+            pass
 
         # if nothing came form the walk method
         return None
@@ -483,11 +616,16 @@ if __name__ == '__main__':
     # continues until an error occurs or user end process
     while True:
         try:
-            command = input(f'{status.name}: ')  # the name of the programming languages changes everytime, based on your pets name
-
             # tests if pet program is not alive
+            # goes through each need in the dictionary and tests if they are dead
+            for need in status.needs_list.values():
+                if not need.alive():
+                    status.alive = False  # pet is labeled as dead
+                    break
             if status.alive == False:
-                break  # ends programming language
+                break
+
+            command = input(f'{status.name}: ')  # the name of the programming languages changes everytime, based on your pets name
 
         except EOFError:
             break  # ends programming language
@@ -499,7 +637,8 @@ if __name__ == '__main__':
             PetExecute(tree, environment, status)  # runs the commands
 
     # makes user press something ENTER before the program fully closes
-    input(f'\033[31< Press ENTER To Exit >\033[0m')
+    input(f'\033[32m< Press ENTER To Exit >\033[0m')
+
 
 
 

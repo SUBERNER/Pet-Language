@@ -1,0 +1,27 @@
+# Pet Language Test Script
+
+int counter = 0
+float pi_approx = 3.14
+str message = "Hello Pet!"
+bool active = true
+
+print(message)
+print(counter)
+
+counter = counter + 5
+print(counter)
+
+float circle_area = counter ^ 2
+float circle_area = pi_approx * circle_area # Area = pi * r^2
+print("Approx circle area:")
+print(circle_area)
+
+list my_list = [10, counter, message, false]
+print("Second item in list:")
+print(my_list[1])
+
+str user_name = input("Enter your name: ")
+print("Hello ")
+print(user_name)
+
+# End of script
