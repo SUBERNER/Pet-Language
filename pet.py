@@ -60,7 +60,6 @@ class PetStatus:
             self._current -= self.current_calculation(self._drain, severity, offset)
             # checks if needs are below the minimum
             self.current_test()
-            print(self._current)
 
         def gain(self, severity: float = 1, offset: tuple[float, float] = (0, 0)):
             # severity is how much a token will gain a need
@@ -91,7 +90,7 @@ class PetLexer(Lexer):
     tokens = {NAME, INT, FLOAT, STRING, BOOL, TYPE, CONDITION, ET, NE, LT, LE, GT, GE}  # categorizes of each token that will be used
     ignore = '\t '  # tokens that are ignored by the program
     literals = {'=', '+', '-', '*', '/', '%', '^', '>', '<',
-                '(', ')', '[', ']', ',', ':', ';', '{', '}'}  # simple tokens that will be required constantly
+                '(', ')', '[', ']', ',', ':', '{', '}'}  # simple tokens that will be required constantly
 
     # statement operation tokens
     ET = r'=='  # equal to
@@ -124,8 +123,8 @@ class PetLexer(Lexer):
 
     # the format of NAME and STRING and all the possible variable types
     # first [] stores start with characters and second [] stores followed by characters
+    CONDITION = r'if|while'
     TYPE = r'int|float|string|bool|list'
-    CONDITION = r'if|else|while'
     NAME = r'[a-zA-Z][a-zA-Z0-9_]*'
     STRING = r'\".*?\"'  # strings must be double quote with anything in it
 
@@ -162,23 +161,33 @@ class PetParser(Parser):
     # creating a variable with nothing assigned to it
     @_('var_declare')
     def statement(self, parse):
+        status.hunger.drain()  # drains food from pet
         return parse.var_declare
 
     # assigned an expression or operation to the variable with the type if the var is new
     @_('TYPE NAME "=" expr')
     def var_declare(self, parse):
+        status.hunger.drain()  # drains food from pet
         return 'var_declare', parse.TYPE, parse.NAME, parse.expr
 
     # used for variables and assigning variables
     # variables with something assigned to it
     @_('var_assign')
     def statement(self, parse):
+        status.hunger.drain()  # drains food from pet
         return parse.var_assign
 
     # assigned an expression or operation to the variable
     @_('NAME "=" expr')
     def var_assign(self, parse):
+        status.hunger.drain()  # drains food from pet
         return 'var_assign', parse.NAME, parse.expr
+
+    # assigned an expression or operation to the variable in a list
+    @_('NAME "[" expr "]" "=" expr')
+    def var_assign(self, parse):
+        status.hunger.drain()  # drains food from pet
+        return 'var_assign', parse.NAME, parse.expr0, parse.expr1
 
     # simply an expression or operation
     @_('expr')
@@ -189,11 +198,13 @@ class PetParser(Parser):
     # this is used when you want to run code with this, usually with run()
     @_('CONDITION "(" expr ")" ":" statement')
     def statement(self, parse):
+        status.hunger.drain()  # drains food from pet
         return parse.CONDITION, parse.expr, parse.statement
 
     # changing variable types
     @_('TYPE "(" expr ")"')
     def expr(self, parse):
+        status.hunger.drain()  # drains food from pet
         return 'call', parse.TYPE, parse.expr
 
     # functions
@@ -205,36 +216,43 @@ class PetParser(Parser):
     # addition
     @_('expr "+" expr')
     def expr(self, parse):
+        status.thirst.drain()  # drains water from pet
         return 'add', parse.expr0, parse.expr1
 
     # subtraction
     @_('expr "-" expr')
     def expr(self, parse):
+        status.thirst.drain()  # drains water from pet
         return 'sub', parse.expr0, parse.expr1
 
     # multiplication
     @_('expr "*" expr')
     def expr(self, parse):
+        status.thirst.drain()  # drains water from pet
         return 'mul', parse.expr0, parse.expr1
 
     # division
     @_('expr "/" expr')
     def expr(self, parse):
+        status.thirst.drain()  # drains water from pet
         return 'div', parse.expr0, parse.expr1
 
     # remainder
     @_('expr "%" expr')
     def expr(self, parse):
+        status.thirst.drain()  # drains water from pet
         return 'rem', parse.expr0, parse.expr1
 
     # exponents
     @_('expr "^" expr')
     def expr(self, parse):
+        status.thirst.drain()  # drains water from pet
         return 'pow', parse.expr0, parse.expr1
 
     # negatives
     @_('"-" expr %prec UMINUS')
     def expr(self, parse):
+        status.thirst.drain()  # drains water from pet
         return parse.expr
 
     # groups of math or operations within ()
@@ -242,40 +260,40 @@ class PetParser(Parser):
     def expr(self, parse):
         return parse.expr
 
-    # used when return a true or false value for expressions not to be its own statement
-    # used only when a true or false result is needed for an expression
-    @_('CONDITION "(" expr ")"')
-    def expr(self, parse):
-        return 'condition', parse.CONDITION, parse.expr
-
     # equal to statement operations
     @_('expr ET expr')
     def expr(self, parse):
+        status.thirst.drain()  # drains water from pet
         return 'eqt', parse.expr0, parse.expr1
 
     # not equal to statement operations
     @_('expr NE expr')
     def expr(self, parse):
+        status.thirst.drain()  # drains water from pet
         return 'not', parse.expr0, parse.expr1
 
     # less than statement operations
     @_('expr LT expr')
     def expr(self, parse):
+        status.thirst.drain()  # drains water from pet
         return 'les', parse.expr0, parse.expr1
 
     # less than or equal to statement operations
     @_('expr LE expr')
     def expr(self, parse):
+        status.thirst.drain()  # drains water from pet
         return 'leq', parse.expr0, parse.expr1
 
     # greater than statement operations
     @_('expr GT expr')
     def expr(self, parse):
+        status.thirst.drain()  # drains water from pet
         return 'gre', parse.expr0, parse.expr1
 
     # greater than or equal to statement operations
     @_('expr GE expr')
     def expr(self, parse):
+        status.thirst.drain()  # drains water from pet
         return 'geq', parse.expr0, parse.expr1
 
     # simply a name
@@ -339,14 +357,6 @@ class PetExecute:
     def __init__(self, tree, environment, status):  #
         self.environment = environment  # stores the variables
         result = self.walk(tree)  # returns the full abstract syntax tree holding the split statements form the parser
-        '''
-        REMOVING FOR NOW AS THIS WAS MENT BEFORE THE PRINT AND RUN METHODS
-        # prints results after the tree has been walked and the results of the statements have been made
-        if result is not None and (isinstance(result, int) or isinstance(result, float)):
-            print(result)
-        if isinstance(result, str):  # test if a result is a string
-            print(result)
-        '''
         print(result)  # DEBUGGING DEBUGGING DEBUGGING DEBUGGING DEBUGGING DEBUGGING
 
     # used for displaying error or warning messages and will affect your pet differently
@@ -361,19 +371,20 @@ class PetExecute:
         status.energy.drain(3)
 
     def walk(self, node):
-        '''
+
         # everytime the program walks it uses energy
         status.energy.drain()
         # additionally, all actions will also drain thirst and hunger, but much slower with each action draining some more thn others
         status.hunger.drain(0.1)
         status.thirst.drain(0.1)
-        '''
 
-        if node and node[0] == 'program':
-            self.walk(node[1])
-            if node[2]:
-                self.walk(node[2])
-            return
+        # condition statements and loops
+        if node[0] == 'if':  # if statement
+            if self.walk(node[1]):  # test if the test statement is true or false
+                self.walk(node[2])  # runs the code if the if statement worked
+        elif node[0] == 'while':  # while loop
+            while self.walk(node[1]):  # test if the test statement is true or false
+                self.walk(node[2])  # runs code until the while statement is not true
 
         print(node)  # DEBUGGING DEBUGGING DEBUGGING DEBUGGING DEBUGGING DEBUGGING
         # returns if node is already a Python-based value
@@ -471,63 +482,77 @@ class PetExecute:
         # stores data inside variables inside the environment when declared
         if node[0] == 'var_declare':
             # type casting
-            node_variable = self.walk(node[3])  # gets the value for testing and storing in environment
-            print(f"NODE: {node_variable}")  # DEBUGGING DEBUGGING DEBUGGING DEBUGGING DEBUGGING DEBUGGING
+            node_value = self.walk(node[3])  # gets the value for testing and storing in environment
+            print(f"NODE: {node_value}")  # DEBUGGING DEBUGGING DEBUGGING DEBUGGING DEBUGGING DEBUGGING
             try:
                 # makes sure types are correct
                 if node[1] == 'int':
-                    if isinstance(node_variable, float):
-                        self.warning_message(f"'Converted '{node_variable}' To '{int(node_variable)}'")  # notifies that float was changed to int
-                    node_variable = int(node_variable)  # changes to int
+                    if isinstance(node_value, float):
+                        self.warning_message(f"'Converted '{node_value}' To '{int(node_value)}'")  # notifies that float was changed to int
+                    node_value = int(node_value)  # changes to int
                 if node[1] == 'float':
-                    if isinstance(node_variable, int):
-                        self.warning_message(f"'Converted '{node_variable}' To '{float(node_variable)}'")  # notifies that int was changed to float
-                    node_variable = float(node_variable)  # changes to float
+                    if isinstance(node_value, int):
+                        self.warning_message(f"'Converted '{node_value}' To '{float(node_value)}'")  # notifies that int was changed to float
+                    node_value = float(node_value)  # changes to float
                 elif node[1] == 'string':
-                    node_variable = str(node_variable)   # changes to string
+                    node_value = str(node_value)   # changes to string
                 elif node[1] == 'bool':
-                    if isinstance(node_variable, (int, float, str)):  # notifies how the other value was converted if converted into a bool
-                        self.warning_message(f"'Converted '{node_variable}' To '{bool(node_variable)}'")  # notifies that anything was changed to bool
-                    node_variable = bool(node_variable)   # changes to bool
+                    if isinstance(node_value, (int, float, str)):  # notifies how the other value was converted if converted into a bool
+                        self.warning_message(f"'Converted '{node_value}' To '{bool(node_value)}'")  # notifies that anything was changed to bool
+                    node_value = bool(node_value)   # changes to bool
                 elif node[1] == 'list':
-                    if isinstance(node_variable, (int, float, str, bool)):  # notifies how the other value was entered in a list
-                        self.warning_message(f"'Converted '{node_variable}' To '{[node_variable]}'") # notifies that anything was put into a list
-                        node_variable = [node_variable]  # changes node variable into a list
+                    if isinstance(node_value, (int, float, str, bool)):  # notifies how the other value was entered in a list
+                        self.warning_message(f"'Converted '{node_value}' To '{[node_value]}'") # notifies that anything was put into a list
+                        node_value = [node_value]  # changes node variable into a list
                 # stores value
-                environmental_variable = {'type': node[1], 'value': node_variable}
+                environmental_variable = {'type': node[1], 'value': node_value}
                 self.environment[node[2]] = environmental_variable
                 return node[2]
             except (ValueError, TypeError):  # happens if the value that has operations preformed on it is the wrong type or if the value is invalid
-                self.warning_message(f"'{node_variable}' To '{type(node_variable)}' Uncombatable") # notifies that float was changed to int
+                self.warning_message(f"'{node_value}' To '{type(node_value)}' Uncombatable")  # notifies that float was changed to int
 
         # returns and stores data inside variables that are stored in the environment
         # only works for variables that already exist
         if node[0] == 'var_assign':
-            # type casting
-            # also displays if the value changed in anyway when changing its type
-            node_variable = self.walk(node[2])  # gets the value for testing and storing in environment
-            if self.environment[node[1]]['type'] == 'int':  # searches for the variable's type in the environment
-                if isinstance(node_variable, float):  # notifies how the other value was converted if converted into a bool
-                    self.warning_message(f"Converted '{node_variable}' To '{int(node_variable)}'")  # notifies that float was changed to int
-                node_variable = int(node_variable)  # changes to int
-            elif self.environment[node[1]]['type'] == 'float':  # searches for the variable's type in the environment
-                if isinstance(node_variable, int):
-                    self.warning_message(f"Converted '{node_variable}' To '{float(node_variable)}'")  # notifies that int was changed to float
-                node_variable = float(node_variable)  # changes int to float
-            elif self.environment[node[1]]['type'] == 'string':  # searches for the variable's type in the environment
-                node_variable = str(node_variable)  # changes to string
-            elif self.environment[node[1]]['type'] == 'bool':  # searches for the variable's type in the environment
-                if isinstance(node_variable, (int, float, str)):  # notifies how the other value was converted if converted into a bool
-                    self.warning_message(f"Converted '{node_variable}' To '{bool(node_variable)}'")  # notifies that types were changed to bool
-                node_variable = str(node_variable)  # changes to bool
-            elif self.environment[node[1]]['type'] == 'list':  # searches for the variable's type in the environment
-                if isinstance(node_variable, (int, float, str, bool)):  # notifies how the other value was entered in a list
-                    self.warning_message(f"'Converted '{node_variable}' To '{[node_variable]}'")  # notifies that anything was put into a list
-                    node_variable = [node_variable]  # changes node variable into a list
+            # checks if variable is stored in a list or not
+            # type casting is not done within changing values within the list, as lists do not care what type of value ios being stored
+            if len(node) == 4:  # works if the variable is part of a list
+                node_index = self.walk(node[2])  # gets the index for list searching
+                node_variable = self.environment[node[1]]  # gets list form environment to extract the data from within the list
+                node_value = self.walk(node[3])  # gets the value for testing and storing in environment
 
-            # stores value
-            self.environment[node[1]]['value'] = node_variable
-            return node[1]
+                # stores value
+                node_variable['value'][node_index] = node_value  # stores the new value within the list
+                return node_value
+
+            else:  # if not a list
+                node_variable = node[1]  # the variable itself
+                node_value = self.walk(node[2])  # gets the value for testing and storing in environment
+
+                # type casting
+                # also displays if the value changed in anyway when changing its type
+                if self.environment[node_variable]['type'] == 'int':  # searches for the variable's type in the environment
+                    if isinstance(node_value, float):  # notifies how the other value was converted if converted into a bool
+                        self.warning_message(f"Converted '{node_value}' To '{int(node_value)}'")  # notifies that float was changed to int
+                    node_value = int(node_value)  # changes to int
+                elif self.environment[node_variable]['type'] == 'float':  # searches for the variable's type in the environment
+                    if isinstance(node_value, int):
+                        self.warning_message(f"Converted '{node_value}' To '{float(node_value)}'")  # notifies that int was changed to float
+                    node_value = float(node_value)  # changes int to float
+                elif self.environment[node_variable]['type'] == 'string':  # searches for the variable's type in the environment
+                    node_value = str(node_value)  # changes to string
+                elif self.environment[node_variable]['type'] == 'bool':  # searches for the variable's type in the environment
+                    if isinstance(node_value, (int, float, str)):  # notifies how the other value was converted if converted into a bool
+                        self.warning_message(f"Converted '{node_value}' To '{bool(node_value)}'")  # notifies that types were changed to bool
+                    node_value = str(node_value)  # changes to bool
+                elif self.environment[node_variable]['type'] == 'list':  # searches for the variable's type in the environment
+                    if isinstance(node_value, (int, float, str, bool)):  # notifies how the other value was entered in a list
+                        self.warning_message(f"'Converted '{node_value}' To '{[node_value]}'")  # notifies that anything was put into a list
+                        node_value = [node_value]  # changes node variable into a list
+
+                # stores value
+                self.environment[node_variable]['value'] = node_value
+                return node_variable
 
         # returns the value of the variable asked for
         if node[0] == 'var':
@@ -589,12 +614,6 @@ class PetExecute:
             elif node[1] == 'type':  # functions to see what kind of type a variable is
                 return type(self.walk((node[2]))).__name__  # gets the argument inside and returns what type the value is
 
-        # condition statements and loops
-        if node[0] == 'if':  # if statement
-            pass
-        elif node[0] == 'while':  # while loop
-            pass
-
         # if nothing came form the walk method
         return None
 
@@ -638,11 +657,3 @@ if __name__ == '__main__':
 
     # makes user press something ENTER before the program fully closes
     input(f'\033[32m< Press ENTER To Exit >\033[0m')
-
-
-
-
-
-
-
-
