@@ -1,0 +1,4 @@
+# checks the status for the pet
+while (check("thirst") <= 50): replenish("thirst")
+while (check("hunger") <= 50): replenish("hunger")
+while (check("energy") <= 50): replenish("energy")

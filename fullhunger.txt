@@ -1,0 +1,2 @@
+# makes sure hunger is fully replenished
+while (check("hunger") <= 90): replenish("hunger")

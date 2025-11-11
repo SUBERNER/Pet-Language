@@ -1,5 +1,12 @@
-x_sum = previous_num + i
-    print("Current Number", i, "Previous Number ", previous_num, " Sum: ", x_sum)
-    # modify previous number
-    # set it to the current number
-    previous_num = i
+int x_sum = previous_num + index
+print("Current Number " + string(index) + " Previous Number " + string(previous_num) + " Sum: " + string(x_sum))
+# modify previous number
+
+# checks statuses
+if (check("hunger") <= 50): run("fullhunger.txt") # makes sure hunger is full
+if (check("thirst") <= 50): replenish("thirst")
+if (check("energy") <= 25): replenish("energy")
+
+# set it to the current number
+previous_num = index
+index = index + 1

@@ -61,13 +61,14 @@ class PetStatus:
             # checks if needs are below the minimum
             self.current_test()
 
-        def gain(self, severity: float = 1, offset: tuple[float, float] = (0, 0)):
+        def gain(self, severity: float = 1, offset: tuple[float, float] = (0, 0), instant: bool = False):
             # severity is how much a token will gain a need
             # offset is how much it can randomly adjust the amount given to the needs current
             self._current += self.current_calculation(self._gain, severity, offset)
             # checks if needs are above maximum
             self.current_test()
-            self.delay()  # adds a delay to make sure users cannot span giving there pet needs
+            if not instant:
+                self.delay()  # adds a delay to make sure users cannot span giving there pet needs
 
     # generates a random name every time the program is ran, purly visual
     name = random.choice(["Luna", "Oliver", "Mittens", "Leo", "Bella", "Shadow", "Simba", "Whiskers", "Chloe", "Jasper", "Nala", "Smokey", "Oreo", "Pumpkin", "Milo", "Patches", "Tigger", "Cleo", "Cosmo", "Ginger", "Zelda", "Rocky", "Binx", "Pepper", "Waffles", "Sir Reginald Fluffington III", "Felix", "Salem", "Goose", "Garfield", "Bagheera", "Gizmo", "Cinder", "Willow", "Hazel", "Olive", "Penelope", "Zoe", "Midnight", "Onyx", "Sterling", "Orion", "Jinx", "Figaro", "Cheshire", "Artemis",
@@ -76,9 +77,9 @@ class PetStatus:
                           "Squeaky", "Nibbles", "Cheddar", "Remy", "Stuart", "Fievel", "Algernon", "Splinter", "Pinky", "Brain", "Nugget", "Domino", "Barnaby", "Mortimer", "Gouda", "Mochi", "Rizzo", "Popcorn", "Einstein", "Marble", "Basil", "Despereaux", "Scabbers", "Crouton", "Pip-squeak", "Lord Squeakington", "Templeton", "Nicodemus", "Timothy", "Gadget", "Zipper", "Monterey", "Colby", "Provolone", "Feta", "Parsley", "Twitch", "Scamp", "Gus-Gus", "Jaq", "Ratthew"])
     alive = True  # this is used to check if the program should end
     # list of all the needs together
-    hunger = Need(True, 1, "Eating", (0, 1), 0.02, 0.25, 5)  # drains when handling variables directly
-    thirst = Need(True, 1, "Drinking", (0, 1), 0.05, 0.5, 1)  # drains when handing every single expr in the parser
-    energy = Need(True, 1, "Resting", (0, 1), 0.005, 0.5, 15)  # drains slowly over time form any code ran
+    hunger = Need(True, 100, "Eating", (0, 100), 0.5, 25, 10)  # drains when handling variables directly
+    thirst = Need(True, 100, "Drinking", (0, 100), 1.5, 50, 2)  # drains when handing every single expr in the parser
+    energy = Need(True, 100, "Resting", (0, 100), 0.1, 50, 30)  # drains slowly over time form any code ran
     # the dictionary here is only used for easier searching for the needs
     needs_list = {'hunger': hunger, 'thirst': thirst, 'energy': energy}  # PUT ALL NEEDS HERE
 
@@ -89,7 +90,7 @@ class PetStatus:
 class PetLexer(Lexer):
     tokens = {NAME, INT, FLOAT, STRING, BOOL, TYPE, CONDITION, ET, NE, LT, LE, GT, GE}  # categorizes of each token that will be used
     ignore = '\t '  # tokens that are ignored by the program
-    literals = {'=', '+', '-', '*', '/', '%', '^', '>', '<',
+    literals = {'=', '+', '-', '*', '/', '%', '^',
                 '(', ')', '[', ']', ',', ':', '{', '}'}  # simple tokens that will be required constantly
 
     # statement operation tokens
@@ -143,6 +144,8 @@ class PetParser(Parser):
 
     # order of operations/processors in operations, math, and logic
     precedence = (
+        ('left', 'ET', 'NE'),
+        ('left', 'LT', 'LE', 'GT', 'GE'),
         ('left', '+', '-'),
         ('left', '*', '/', '%'),
         ('right', '^'),  # exponents
@@ -207,9 +210,15 @@ class PetParser(Parser):
         return 'call', parse.TYPE, parse.expr
 
     # functions
-    @_('NAME "(" expr ")"')
+    @_('NAME "(" ")"')
     def expr(self, parse):
-        return 'call', parse.NAME, parse.expr
+        return 'call', parse.NAME
+
+    # functions
+    # groups allow me to have dynamic argument sizes for calls
+    @_('NAME "(" group ")"')
+    def expr(self, parse):
+        return 'call', parse.NAME, parse.group
 
     # expressions and operations when dealing with math-based precedence
     # addition
@@ -285,11 +294,13 @@ class PetParser(Parser):
     # simply a name
     @_('NAME')
     def expr(self, parse):
+        status.hunger.drain(0.25)  # drains food from pet
         return 'var', parse.NAME
 
     # searching data from list
     @_('NAME "[" expr "]"')
     def expr(self, parse):
+        status.hunger.drain()  # drains food from pet
         return 'var', parse.NAME, parse.expr
 
     # simply a float number
@@ -317,7 +328,7 @@ class PetParser(Parser):
     # determining if groups exist, the length of the groups, and then putting all the items in a group together
     @_('expr')
     def group(self, parse):
-        status.hunger.drain(0.1)  # drains food from pet
+        status.hunger.drain(0.25)  # drains food from pet
         return [parse.expr]  # creates a new list that will added over time with the below method
 
     @_('group "," expr')
@@ -346,7 +357,7 @@ class PetExecute:
     def __init__(self, tree, environment, status):  #
         self.environment = environment  # stores the variables
         result = self.walk(tree)  # returns the full abstract syntax tree holding the split statements form the parser
-        print(result)  # DEBUGGING DEBUGGING DEBUGGING DEBUGGING DEBUGGING DEBUGGING
+        #print(result)  # DEBUGGING DEBUGGING DEBUGGING DEBUGGING DEBUGGING DEBUGGING
 
     # used for displaying error or warning messages and will affect your pet differently
     def error_message(self, message: str):  # error messages will display red and instantly kill the animal
@@ -367,6 +378,10 @@ class PetExecute:
         status.hunger.drain(0.1)
         status.thirst.drain(0.1)
 
+        # returns if no nodes where found
+        if node == None:
+            return None
+
         # condition statements and loops
         if node[0] == 'if':  # if statement
             if self.walk(node[1]):  # test if the test statement is true or false
@@ -375,14 +390,10 @@ class PetExecute:
             while self.walk(node[1]):  # test if the test statement is true or false
                 self.walk(node[2])  # runs code until the while statement is not true
 
-        print(node)  # DEBUGGING DEBUGGING DEBUGGING DEBUGGING DEBUGGING DEBUGGING
+        #print(node)  # DEBUGGING DEBUGGING DEBUGGING DEBUGGING DEBUGGING DEBUGGING
         # returns if node is already a Python-based value
         if isinstance(node, (int, float, str, bool, list)):
             return node
-
-        # returns if no nodes where found
-        if node == None:
-            return None
 
         # returns the value if the node is a simple number, string, bool, or list
         if node[0] == 'num' or node[0] == 'str' or node[0] == 'bool':
@@ -454,7 +465,7 @@ class PetExecute:
         if node[0] == 'les':  # less than
             node0 = self.walk(node[1])
             node1 = self.walk(node[2])
-            return node0 << node1
+            return node0 < node1
         if node[0] == 'leq':  # less than or equal to
             node0 = self.walk(node[1])
             node1 = self.walk(node[2])
@@ -462,7 +473,7 @@ class PetExecute:
         if node[0] == 'gre':  # greater than
             node0 = self.walk(node[1])
             node1 = self.walk(node[2])
-            return node0 >> node1
+            return node0 > node1
         if node[0] == 'geq':  # greater than or equal to
             node0 = self.walk(node[1])
             node1 = self.walk(node[2])
@@ -472,7 +483,7 @@ class PetExecute:
         if node[0] == 'var_declare':
             # type casting
             node_value = self.walk(node[3])  # gets the value for testing and storing in environment
-            print(f"NODE: {node_value}")  # DEBUGGING DEBUGGING DEBUGGING DEBUGGING DEBUGGING DEBUGGING
+            #print(f"NODE: {node_value}")  # DEBUGGING DEBUGGING DEBUGGING DEBUGGING DEBUGGING DEBUGGING
             try:
                 # makes sure types are correct
                 if node[1] == 'int':
@@ -556,12 +567,24 @@ class PetExecute:
 
         # returns results for functions and all things functions
         if node[0] == 'call':  # only functions
+
+            # extracting the values from all of the arguments that were put in a group list
+            node_list = []  # will store reach argument in this list and will pull how far as needed for each call method
+            if isinstance(node[2], list):  # checks if the node[2] is a group of expr or a single expr
+                for node_argument in node[2]:
+                    node_list.append(self.walk(node_argument))  # store and sets up argument to be used by the calls
+            else:  # if it is a single expr statement and nor a group
+                node_list.append(self.walk(node[2]))
+
+            # only uses one argument
             if node[1] == 'print':  # functions for displaying text or data
-                print(self.walk(node[2]))  # prints out the exact same as print in python
+                print(node_list[0])  # prints out the exact same as print in python
+            # only uses one argument
             elif node[1] == 'input':  # functions for asking and receiving user data or input
-                return input(self.walk(node[2]))  # gets the argument inside the input method for displaying and returns a users response
+                return input(node_list[0])  # gets the argument inside the input method for displaying and returns a user's response
+            # only uses one argument
             elif node[1] == 'run':  # functions for running many lines of code together
-                node_file = self.walk(node[2])  # gets the file path given that has all the code to run
+                node_file = node_list[0]  # gets the file path given that has all the code to run
                 try:
                     if isinstance(node_file, str):
                         with open(node_file, 'r') as file:  # opens the file after removing the double quotation marks at the beginning and end
@@ -572,36 +595,72 @@ class PetExecute:
                                 for need in status.needs_list.values():
                                     if not need.alive():
                                         status.alive = False  # pet is labeled as dead
-                                        return None  # ends the run process early due to pet dying
+                                        break
+                                if status.alive == False:
+                                    break
+
                                 node_tree = parser.parse(lexer.tokenize(node_text))  # splits command between spaces
                                 PetExecute(node_tree, self.environment, status)  # runs the commands with existing environment, parser, lexer, and everything else
                     else:
                         self.error_message(f"'{node_file}' Type Uncombatable")  # notifies that file must be a string
                 except FileNotFoundError:
-                    print(f"< '{node_file}' Unfound >")  # notifies if the file was not found
+                    self.warning_message(f"'{node_file}' Unfound")  # notifies if the file was not found
+
+            # only uses one argument
+            elif node[1] == 'len':  # checks the length of lists
+                return len(node_list[0])
+            # only uses one argument
+            elif node[1] == 'clear':  # clears the data from inside a list
+                return node_list[0].clear()
+            # requires two argument, the list variable, and the data being added to the end of the list
+            elif node[1] == 'append':  # adds data to the end of a list
+                return node_list[0].append(node_list[1])
+            # requires three argument, the list variable, the position in the list the data will go in, and the data being added tothe list
+            elif node[1] == 'insert':  # adds data anywhere to the list
+                return node_list[0].insert(node_list[1], node_list[2])
+            # requires two argument, the list variable, and the location of the data being removed
+            elif node[1] == 'pop':  # removes data form anywhere in the list
+                return node_list[0].pop(node_list[1])
+            # requires two argument, the list variable, and the data being removed
+            elif node[1] == 'remove':  # removes specified data from the list
+                return node_list[0].remove(node_list[1])
+            # requires two argument, the list variable, and the data being counted
+            elif node[1] == 'count':  # counts the amount of that data inside a list
+                return node_list[0].count(node_list[1])
+            # only uses one argument
+            elif node[1] == 'sort':  # sorts the data alphabetically
+                return node_list[0].sort()
+
+            # only uses one argument
             elif node[1] == 'replenish':  # used to replenish stats for the pet
-                node_need = self.walk(node[2])  # finds the need that will be replenished
+                node_need = node_list[0]  # finds the need that will be replenished
                 try:
+                    # recovers what was drained during replenishing
+                    status.hunger.gain(0.08, instant=True)
+                    status.thirst.gain(0.13, instant=True)
+                    status.energy.gain(0.010, instant=True)
+
                     status.needs_list[node_need].gain()  # replenishes the pets needs by giving pets more of the need, allowing users to run code for longer
                 except KeyError:  # if the need does no
                     self.warning_message(f"'{node_need}' Need Nonexistent")  # notifies that file must be a string
+            # only uses one argument
             elif node[1] == 'check':  # used to check the stats for the pet
-                node_need = self.walk(node[2])  # finds the need that will be checked
+                node_need = node_list[0]  # finds the need that will be checked
                 try:
                     return status.needs_list[node_need].check()  # replenishes the pets needs by giving pets more of the need, allowing users to run code for longer
                 except KeyError:  # if the need does not exist:
                     self.warning_message(f"'{node_need}' Need Nonexistent")  # notifies that file must be a string
-            # all below are used to change the variable type
+            # all below are used to change the variable type, only uses one argument
             elif node[1] == 'int':  # functions for changed variable types to int
-                return int(self.walk(node[2]))  # gets the argument inside and converts the variable into an integer
+                return int(node_list[0])  # gets the argument inside and converts the variable into an integer
             elif node[1] == 'float':  # functions for changed variable types to float
-                return float(self.walk(node[2]))  # gets the argument inside and converts the variable into a float
+                return float(node_list[0])  # gets the argument inside and converts the variable into a float
             elif node[1] == 'string':  # functions for changed variable types to string
-                return str(self.walk(node[2]))  # gets the argument inside and converts the variable into a string
+                return str(node_list[0])  # gets the argument inside and converts the variable into a string
             elif node[1] == 'bool':  # functions for changed variable types to bool
-                return bool(self.walk(node[2]))  # gets the argument inside and converts the variable into a bool
+                return bool(node_list[0])  # gets the argument inside and converts the variable into a bool
             elif node[1] == 'type':  # functions to see what kind of type a variable is
-                return type(self.walk((node[2]))).__name__  # gets the argument inside and returns what type the value is
+                return type(node_list[0]).__name__  # gets the argument inside and returns what type the value is
 
         # if nothing came form the walk method
         return None
@@ -640,7 +699,7 @@ if __name__ == '__main__':
 
         # if commands form user was received
         if command:
-            print(list(lexer.tokenize(command)))  # DEBUGGING DEBUGGING DEBUGGING DEBUGGING DEBUGGING DEBUGGING
+            #print(list(lexer.tokenize(command)))  # DEBUGGING DEBUGGING DEBUGGING DEBUGGING DEBUGGING DEBUGGING
             tree = parser.parse(lexer.tokenize(command))  # splits command between spaces
             PetExecute(tree, environment, status)  # runs the commands
 
