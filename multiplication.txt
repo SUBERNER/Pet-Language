@@ -1,0 +1,12 @@
+# conditions
+float num1 = 20
+float num2 = 30
+
+# calculate product of two number
+float product = num1 * num2
+
+# check if product is greater than 1000 calculate sum
+if (product >> 1000): product = num1 + num2
+
+print("The result is" + product)
+

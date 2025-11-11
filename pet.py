@@ -76,9 +76,9 @@ class PetStatus:
                           "Squeaky", "Nibbles", "Cheddar", "Remy", "Stuart", "Fievel", "Algernon", "Splinter", "Pinky", "Brain", "Nugget", "Domino", "Barnaby", "Mortimer", "Gouda", "Mochi", "Rizzo", "Popcorn", "Einstein", "Marble", "Basil", "Despereaux", "Scabbers", "Crouton", "Pip-squeak", "Lord Squeakington", "Templeton", "Nicodemus", "Timothy", "Gadget", "Zipper", "Monterey", "Colby", "Provolone", "Feta", "Parsley", "Twitch", "Scamp", "Gus-Gus", "Jaq", "Ratthew"])
     alive = True  # this is used to check if the program should end
     # list of all the needs together
-    hunger = Need(True, 1, "Eating", (0, 1), 0.02, 0.25, 10)  # stores how hungry the pet is
-    thirst = Need(True, 1, "Drinking", (0, 1), 0.05, 0.5, 2)  # stores how thirsty the pet is
-    energy = Need(True, 1, "Resting", (0, 1), 0.01, 0.5, 30)  # stores how much energy the pet has left
+    hunger = Need(True, 1, "Eating", (0, 1), 0.02, 0.25, 5)  # drains when handling variables directly
+    thirst = Need(True, 1, "Drinking", (0, 1), 0.05, 0.5, 1)  # drains when handing every single expr in the parser
+    energy = Need(True, 1, "Resting", (0, 1), 0.005, 0.5, 15)  # drains slowly over time form any code ran
     # the dictionary here is only used for easier searching for the needs
     needs_list = {'hunger': hunger, 'thirst': thirst, 'energy': energy}  # PUT ALL NEEDS HERE
 
@@ -192,19 +192,18 @@ class PetParser(Parser):
     # simply an expression or operation
     @_('expr')
     def statement(self, parse):
+        status.thirst.drain()  # drains food from pet
         return parse.expr
 
     # used when there is more code to be executed after the value is true or false,
     # this is used when you want to run code with this, usually with run()
     @_('CONDITION "(" expr ")" ":" statement')
     def statement(self, parse):
-        status.hunger.drain()  # drains food from pet
         return parse.CONDITION, parse.expr, parse.statement
 
     # changing variable types
     @_('TYPE "(" expr ")"')
     def expr(self, parse):
-        status.hunger.drain()  # drains food from pet
         return 'call', parse.TYPE, parse.expr
 
     # functions
@@ -216,43 +215,36 @@ class PetParser(Parser):
     # addition
     @_('expr "+" expr')
     def expr(self, parse):
-        status.thirst.drain()  # drains water from pet
         return 'add', parse.expr0, parse.expr1
 
     # subtraction
     @_('expr "-" expr')
     def expr(self, parse):
-        status.thirst.drain()  # drains water from pet
         return 'sub', parse.expr0, parse.expr1
 
     # multiplication
     @_('expr "*" expr')
     def expr(self, parse):
-        status.thirst.drain()  # drains water from pet
         return 'mul', parse.expr0, parse.expr1
 
     # division
     @_('expr "/" expr')
     def expr(self, parse):
-        status.thirst.drain()  # drains water from pet
         return 'div', parse.expr0, parse.expr1
 
     # remainder
     @_('expr "%" expr')
     def expr(self, parse):
-        status.thirst.drain()  # drains water from pet
         return 'rem', parse.expr0, parse.expr1
 
     # exponents
     @_('expr "^" expr')
     def expr(self, parse):
-        status.thirst.drain()  # drains water from pet
         return 'pow', parse.expr0, parse.expr1
 
     # negatives
     @_('"-" expr %prec UMINUS')
     def expr(self, parse):
-        status.thirst.drain()  # drains water from pet
         return parse.expr
 
     # groups of math or operations within ()
@@ -263,37 +255,31 @@ class PetParser(Parser):
     # equal to statement operations
     @_('expr ET expr')
     def expr(self, parse):
-        status.thirst.drain()  # drains water from pet
         return 'eqt', parse.expr0, parse.expr1
 
     # not equal to statement operations
     @_('expr NE expr')
     def expr(self, parse):
-        status.thirst.drain()  # drains water from pet
         return 'not', parse.expr0, parse.expr1
 
     # less than statement operations
     @_('expr LT expr')
     def expr(self, parse):
-        status.thirst.drain()  # drains water from pet
         return 'les', parse.expr0, parse.expr1
 
     # less than or equal to statement operations
     @_('expr LE expr')
     def expr(self, parse):
-        status.thirst.drain()  # drains water from pet
         return 'leq', parse.expr0, parse.expr1
 
     # greater than statement operations
     @_('expr GT expr')
     def expr(self, parse):
-        status.thirst.drain()  # drains water from pet
         return 'gre', parse.expr0, parse.expr1
 
     # greater than or equal to statement operations
     @_('expr GE expr')
     def expr(self, parse):
-        status.thirst.drain()  # drains water from pet
         return 'geq', parse.expr0, parse.expr1
 
     # simply a name
@@ -331,6 +317,7 @@ class PetParser(Parser):
     # determining if groups exist, the length of the groups, and then putting all the items in a group together
     @_('expr')
     def group(self, parse):
+        status.hunger.drain(0.1)  # drains food from pet
         return [parse.expr]  # creates a new list that will added over time with the below method
 
     @_('group "," expr')
@@ -341,11 +328,13 @@ class PetParser(Parser):
     # empty lists
     @_('"[" "]"')
     def expr(self, parse):
+        status.hunger.drain()  # drains food from pet
         return 'list', []  # returns an empty list
 
     # non-empty list
     @_('"[" group "]"')
     def expr(self, parse):
+        status.hunger.drain()  # drains food from pet
         return 'list', parse.group  # returns
 
 
@@ -654,6 +643,10 @@ if __name__ == '__main__':
             print(list(lexer.tokenize(command)))  # DEBUGGING DEBUGGING DEBUGGING DEBUGGING DEBUGGING DEBUGGING
             tree = parser.parse(lexer.tokenize(command))  # splits command between spaces
             PetExecute(tree, environment, status)  # runs the commands
+
+        print(f"HUNGER: {status.hunger.check()}")
+        print(f"THIRST: {status.thirst.check()}")
+        print(f"ENERGY: {status.energy.check()}")
 
     # makes user press something ENTER before the program fully closes
     input(f'\033[32m< Press ENTER To Exit >\033[0m')
