@@ -1,0 +1,10 @@
+# part of the firstlast.txt file
+
+print("Given list:" + string(numbers))
+
+int first_num = numbers[0]
+int last_num = numbers[-1]
+
+if (first_num == last_num): results = True
+
+if (last_num != first_num): results = False

@@ -1,0 +1,22 @@
+list my_list = [10, 20, 30, 40, 50]
+print("Initial list: " + string(my_list))
+
+# Change the second element (at index 1) to 200
+my_list[1] = 200
+print("After changing second element: " + string(my_list))
+
+# Add 600 to the end of the list
+append(my_list, 600)
+print("List after appending 600: " + string(my_list))
+
+# Insert 300 at index 2
+insert(my_list, 2, 300)
+print("List after inserting 300 at index 2: " + string(my_list))
+
+# Remove 600 from the list (by value)
+remove(my_list, 600)
+print("List after removing 600 (by value): " + string(my_list))
+
+# Popping the last element
+pop(my_list, 0)
+print("List after poping element at first index: " + string(my_list))

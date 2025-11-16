@@ -1,0 +1,9 @@
+bool results = False
+
+list numbers = [10, 20, 30, 40, 10]
+print("result is " + string(run("flsame.txt")))
+
+run("checking.txt")
+
+numbers = [75, 65, 35, 75, 30]
+print("result is " + string(run("flsame.txt")))

@@ -2,7 +2,6 @@ from scipy.special.cython_special import exprel
 from sly import Lexer, Parser
 from time import sleep
 import random
-import logging
 
 ########################################
 # PET STATUS # PET STATUS # PET STATUS #
@@ -30,9 +29,11 @@ class PetStatus:
 
         def death(self):
             # method happens once a pet dies do to a need going to zero
-            print(f"< PET DEAD >")
-            print(f"< CAUSE: Lack Of {self._action} >")  # displays what need caused the death
-            self._alive = False
+            if self._alive and status.alive:
+                print(f"\033[34m< PET DEAD >\033[0m")
+                print(f"\033[34m< CAUSE: Lack Of {self._action} >\033[0m")   # displays what need caused the death
+                status.alive = False  # makes the total status system dead, so that no more status show as death reason
+            self._alive = False # death reason of local status
 
         def current_test(self):
             # test to see if current is within range of minmax
@@ -50,9 +51,9 @@ class PetStatus:
 
         def delay(self, severity: float = 1, offset: tuple[float, float] = (0, 0)):
             # severity is how much more or less the delay effects the pet
-            print(f"< Pet's Currently {self._action} >")  # displays that the need is being taken care of
+            print(f"\033[36m< Pet's Currently {self._action} >\033[0m")  # displays that the need is being taken care of
             sleep(self.current_calculation(self._delay, severity, offset))  # the duration in seconds the delay will happen for the action
-            print(f"< Pet's Finished {self._action} >")  # displays that the need is being taken care of
+            print(f"\033[36m< Pet's Finished {self._action} >\033[0m")  # displays that the need is being taken care of
 
         def drain(self, severity: float = 1, offset: tuple[float, float] = (0, 0)):
             # severity is how much a token will drain a need
@@ -77,9 +78,9 @@ class PetStatus:
                           "Squeaky", "Nibbles", "Cheddar", "Remy", "Stuart", "Fievel", "Algernon", "Splinter", "Pinky", "Brain", "Nugget", "Domino", "Barnaby", "Mortimer", "Gouda", "Mochi", "Rizzo", "Popcorn", "Einstein", "Marble", "Basil", "Despereaux", "Scabbers", "Crouton", "Pip-squeak", "Lord Squeakington", "Templeton", "Nicodemus", "Timothy", "Gadget", "Zipper", "Monterey", "Colby", "Provolone", "Feta", "Parsley", "Twitch", "Scamp", "Gus-Gus", "Jaq", "Ratthew"])
     alive = True  # this is used to check if the program should end
     # list of all the needs together
-    hunger = Need(True, 100, "Eating", (0, 100), 0.5, 25, 10)  # drains when handling variables directly
-    thirst = Need(True, 100, "Drinking", (0, 100), 1.5, 50, 2)  # drains when handing every single expr in the parser
-    energy = Need(True, 100, "Resting", (0, 100), 0.1, 50, 30)  # drains slowly over time form any code ran
+    hunger = Need(True, 100, "Eating", (0, 100), 0.5, 30, 0.6)  # drains when handling variables directly
+    thirst = Need(True, 100, "Drinking", (0, 100), 1.5, 50, 0.2)  # drains when handing every single expr in the parser
+    energy = Need(True, 100, "Resting", (0, 100), 0.1, 100, 0.20)  # drains slowly over time form any code ran
     # the dictionary here is only used for easier searching for the needs
     needs_list = {'hunger': hunger, 'thirst': thirst, 'energy': energy}  # PUT ALL NEEDS HERE
 
@@ -90,8 +91,8 @@ class PetStatus:
 class PetLexer(Lexer):
     tokens = {NAME, INT, FLOAT, STRING, BOOL, TYPE, CONDITION, ET, NE, LT, LE, GT, GE}  # categorizes of each token that will be used
     ignore = '\t '  # tokens that are ignored by the program
-    literals = {'=', '+', '-', '*', '/', '%', '^',
-                '(', ')', '[', ']', ',', ':', '{', '}'}  # simple tokens that will be required constantly
+    literals = {'=', '+', '-', '*', '/', '%', '^', '>', '<',
+                '(', ')', '[', ']', ',', ':'}  # simple tokens that will be required constantly
 
     # statement operation tokens
     ET = r'=='  # equal to
@@ -116,10 +117,10 @@ class PetLexer(Lexer):
         return token
 
     # tokens for integer numbers
-    @_(r'true|false')  # true or false
+    @_(r'true|false|True|False')  # true or false
     def BOOL(self, token):
         # makes value into python format
-        token.value = True if token.value == 'true' else False  # due to the weirdness of bool(), empty means false and anything means true
+        token.value = True if token.value in ('true','True') else False  # due to the weirdness of bool(), empty means false and anything means true
         return token
 
     # the format of NAME and STRING and all the possible variable types
@@ -375,8 +376,6 @@ class PetExecute:
         # everytime the program walks it uses energy
         status.energy.drain()
         # additionally, all actions will also drain thirst and hunger, but much slower with each action draining some more thn others
-        status.hunger.drain(0.1)
-        status.thirst.drain(0.1)
 
         # returns if no nodes where found
         if node == None:
@@ -444,11 +443,10 @@ class PetExecute:
                 return node0 % node1
             else:  # if there was a type mismatch
                 self.error_message(f"'{node0}' & '{node1}' Uncombatable")  # displays if variables are uncombatable
-
         elif node[0] == 'pow':
             node0 = self.walk(node[1])
             node1 = self.walk(node[2])
-            if isinstance(node0, (int, float)) and type(node0) == type(node1):  # ints and floats
+            if isinstance(node0, (int, float)) and isinstance(node1, (int, float)):  # ints and floats
                 return node0 ** node1
             else:  # if there was a type mismatch
                 self.error_message(f"'{node0}' & '{node1}' Uncombatable")  # displays if variables are uncombatable
@@ -497,9 +495,14 @@ class PetExecute:
                 elif node[1] == 'string':
                     node_value = str(node_value)   # changes to string
                 elif node[1] == 'bool':
-                    if isinstance(node_value, (int, float, str)):  # notifies how the other value was converted if converted into a bool
-                        self.warning_message(f"'Converted '{node_value}' To '{bool(node_value)}'")  # notifies that anything was changed to bool
-                    node_value = bool(node_value)   # changes to bool
+                    # Used AI here as I had no idea how to solve my bool problem
+                    # convert to bool safely
+                    was_bool = isinstance(node_value, bool)
+                    converted = bool(node_value)
+                    # only warn if type changed or value actually changed for real bools
+                    if (not was_bool) or (was_bool and converted != node_value):
+                        self.warning_message(f"Converted {node_value} To {converted}")
+                    node_value = converted
                 elif node[1] == 'list':
                     if isinstance(node_value, (int, float, str, bool)):  # notifies how the other value was entered in a list
                         self.warning_message(f"'Converted '{node_value}' To '{[node_value]}'") # notifies that anything was put into a list
@@ -542,9 +545,14 @@ class PetExecute:
                 elif self.environment[node_variable]['type'] == 'string':  # searches for the variable's type in the environment
                     node_value = str(node_value)  # changes to string
                 elif self.environment[node_variable]['type'] == 'bool':  # searches for the variable's type in the environment
-                    if isinstance(node_value, (int, float, str)):  # notifies how the other value was converted if converted into a bool
-                        self.warning_message(f"Converted '{node_value}' To '{bool(node_value)}'")  # notifies that types were changed to bool
-                    node_value = str(node_value)  # changes to bool
+                    # Used AI here as I had no idea how to solve my bool problem
+                    # convert to bool safely
+                    was_bool = isinstance(node_value, bool)
+                    converted = bool(node_value)
+                    # only warn if type changed or value actually changed for real bools
+                    if (not was_bool) or (was_bool and converted != node_value):
+                        self.warning_message(f"Converted {node_value} To {converted}")
+                    node_value = converted
                 elif self.environment[node_variable]['type'] == 'list':  # searches for the variable's type in the environment
                     if isinstance(node_value, (int, float, str, bool)):  # notifies how the other value was entered in a list
                         self.warning_message(f"'Converted '{node_value}' To '{[node_value]}'")  # notifies that anything was put into a list
@@ -592,12 +600,10 @@ class PetExecute:
                             for node_text in node_texts:  # goes through each statement
                                 # tests if pet program is not alive
                                 # goes through each need in the dictionary and tests if they are dead
-                                for need in status.needs_list.values():
-                                    if not need.alive():
-                                        status.alive = False  # pet is labeled as dead
-                                        break
                                 if status.alive == False:
-                                    break
+                                    # makes user press something ENTER before the program fully closes
+                                    input(f'\033[32m< Press ENTER To Exit >\033[0m')
+                                    exit()
 
                                 node_tree = parser.parse(lexer.tokenize(node_text))  # splits command between spaces
                                 PetExecute(node_tree, self.environment, status)  # runs the commands with existing environment, parser, lexer, and everything else
@@ -685,10 +691,6 @@ if __name__ == '__main__':
         try:
             # tests if pet program is not alive
             # goes through each need in the dictionary and tests if they are dead
-            for need in status.needs_list.values():
-                if not need.alive():
-                    status.alive = False  # pet is labeled as dead
-                    break
             if status.alive == False:
                 break
 
@@ -709,3 +711,4 @@ if __name__ == '__main__':
 
     # makes user press something ENTER before the program fully closes
     input(f'\033[32m< Press ENTER To Exit >\033[0m')
+    exit()
