@@ -78,9 +78,9 @@ class PetStatus:
                           "Squeaky", "Nibbles", "Cheddar", "Remy", "Stuart", "Fievel", "Algernon", "Splinter", "Pinky", "Brain", "Nugget", "Domino", "Barnaby", "Mortimer", "Gouda", "Mochi", "Rizzo", "Popcorn", "Einstein", "Marble", "Basil", "Despereaux", "Scabbers", "Crouton", "Pip-squeak", "Lord Squeakington", "Templeton", "Nicodemus", "Timothy", "Gadget", "Zipper", "Monterey", "Colby", "Provolone", "Feta", "Parsley", "Twitch", "Scamp", "Gus-Gus", "Jaq", "Ratthew"])
     alive = True  # this is used to check if the program should end
     # list of all the needs together
-    hunger = Need(True, 100, "Eating", (0, 100), 0.5, 30, 0.6)  # drains when handling variables directly
-    thirst = Need(True, 100, "Drinking", (0, 100), 1.5, 50, 0.2)  # drains when handing every single expr in the parser
-    energy = Need(True, 100, "Resting", (0, 100), 0.1, 100, 0.20)  # drains slowly over time form any code ran
+    hunger = Need(True, 100, "Eating", (0, 100), 1, 30, 6)  # drains when handling variables directly
+    thirst = Need(True, 100, "Drinking", (0, 100), 3, 50, 2)  # drains when handing every single expr in the parser
+    energy = Need(True, 100, "Resting", (0, 100), 0.1, 100, 20)  # drains slowly over time form any code ran
     # the dictionary here is only used for easier searching for the needs
     needs_list = {'hunger': hunger, 'thirst': thirst, 'energy': energy}  # PUT ALL NEEDS HERE
 
@@ -372,10 +372,8 @@ class PetExecute:
         status.energy.drain(3)
 
     def walk(self, node):
-
         # everytime the program walks it uses energy
         status.energy.drain()
-        # additionally, all actions will also drain thirst and hunger, but much slower with each action draining some more thn others
 
         # returns if no nodes where found
         if node == None:
@@ -401,87 +399,127 @@ class PetExecute:
         # turns values into normal values, then reconverts them into what the parser wants to work on
         # does this everytime a list is used
         if node[0] == 'list':
-            node_list = []  # empty list to deconvert and reconvert the values into what the parser wants
+            node_arguments = []  # empty list to deconvert and reconvert the values into what the parser wants
             # creates a normal list
             for node_item in node[1]:
-                node_list.append(self.walk(node_item))  # converts the value parser form to a normal value
-            return node_list
+                node_arguments.append(self.walk(node_item))  # converts the value parser form to a normal value
+            return node_arguments
 
         # returns the nodes value it after doing simple math
         if node[0] == 'add':
             node0 = self.walk(node[1])
             node1 = self.walk(node[2])
-            if type(node0) == type(node1):  # ints, floats, and strings
+            try:  # test for type errors
                 return node0 + node1
-            else:  # if there was a type mismatch
+            except TypeError:  # if there was a type mismatch
                 self.error_message(f"'{node0}' & '{node1}' Uncombatable")  # displays if variables are uncombatable
+                return None
         elif node[0] == 'sub':
             node0 = self.walk(node[1])
             node1 = self.walk(node[2])
-            if type(node0) == type(node1):  # ints, floats, and strings
+            try:  # test for type errors
                 return node0 - node1
-            else:  # if there was a type mismatch
+            except TypeError:  # if there was a type mismatch
                 self.error_message(f"'{node0}' & '{node1}' Uncombatable")  # displays if variables are uncombatable
         elif node[0] == 'mul':
             node0 = self.walk(node[1])
             node1 = self.walk(node[2])
-            if (isinstance(node0, (int, float)) and type(node0) == type(node1)) or ((isinstance(node0, int) and isinstance(node1, str)) or (isinstance(node0, str) and isinstance(node1, int))):  # ints and floats, or one string and one int
+            try:  # test for type errors
                 return node0 * node1
-            else:  # if there was a type mismatch
+            except TypeError:  # if there was a type mismatch
                 self.error_message(f"'{node0}' & '{node1}' Uncombatable")  # displays if variables are uncombatable
+                return None
         elif node[0] == 'div':
             node0 = self.walk(node[1])
             node1 = self.walk(node[2])
-            if isinstance(node0, (int, float)) and type(node0) == type(node1):  # ints and floats
-                return node0 / node1
-            else:  # if there was a type mismatch
-                self.error_message(f"'{node0}' & '{node1}' Uncombatable")  # displays if variables are uncombatable
+            try:  # test for division zero errors
+                try:  # test for type errors
+                    return node0 / node1
+                except TypeError:  # if there was a type mismatch
+                    self.error_message(f"'{node0}' & '{node1}' Uncombatable")  # displays if variables are uncombatable
+                    return None
+            except ZeroDivisionError:
+                self.error_message(f"'{node0}' & '{node1}' Indivisible")  # displays if variables are trying to divide by 0
+                return None
         elif node[0] == 'rem':
             node0 = self.walk(node[1])
             node1 = self.walk(node[2])
-            if isinstance(node0, (int, float)) and type(node0) == type(node1):  # ints and floats
-                return node0 % node1
-            else:  # if there was a type mismatch
-                self.error_message(f"'{node0}' & '{node1}' Uncombatable")  # displays if variables are uncombatable
+            try:  # test for division zero errors
+                try:  # test for type errors
+                    return node0 % node1
+                except TypeError:  # if there was a type mismatch
+                    self.error_message(f"'{node0}' & '{node1}' Uncombatable")  # displays if variables are uncombatable
+                    return None
+            except ZeroDivisionError:
+                self.error_message(f"'{node0}' & '{node1}' Indivisible")  # displays if variables are trying to divide by 0
+                return None
         elif node[0] == 'pow':
             node0 = self.walk(node[1])
             node1 = self.walk(node[2])
-            if isinstance(node0, (int, float)) and isinstance(node1, (int, float)):  # ints and floats
+            try:  # test for type errors
                 return node0 ** node1
-            else:  # if there was a type mismatch
+            except TypeError:  # if there was a type mismatch
                 self.error_message(f"'{node0}' & '{node1}' Uncombatable")  # displays if variables are uncombatable
-
+                return None
         # returns if statement is true after doing operations
         if node[0] == 'eqt':  # equal to
             node0 = self.walk(node[1])
             node1 = self.walk(node[2])
-            return node0 == node1
+            try:
+                return node0 == node1
+            except TypeError:  # if there was a type mismatch, returns value as false
+                self.warning_message(f"Incompatible '{node0}' & '{node1}' Are False")
+                return False
+
         if node[0] == 'not':  # not equal to
             node0 = self.walk(node[1])
             node1 = self.walk(node[2])
-            return node0 != node1
+            try:
+                return node0 != node1
+            except TypeError:  # if there was a type mismatch, returns value as false
+                self.warning_message(f"Incompatible '{node0}' & '{node1}' Are False")
+                return False
+
         if node[0] == 'les':  # less than
             node0 = self.walk(node[1])
             node1 = self.walk(node[2])
-            return node0 < node1
+            try:
+                return node0 < node1
+            except TypeError:  # if there was a type mismatch, returns value as false
+                self.warning_message(f"Incompatible '{node0}' & '{node1}' Are False")
+                return False
+
         if node[0] == 'leq':  # less than or equal to
             node0 = self.walk(node[1])
             node1 = self.walk(node[2])
-            return node0 <= node1
+            try:
+                return node0 <= node1
+            except TypeError:  # if there was a type mismatch, returns value as false
+                self.warning_message(f"Incompatible '{node0}' & '{node1}' Are False")
+                return False
+
         if node[0] == 'gre':  # greater than
             node0 = self.walk(node[1])
             node1 = self.walk(node[2])
-            return node0 > node1
+            try:
+                return node0 > node1
+            except TypeError:  # if there was a type mismatch, returns value as false
+                self.warning_message(f"Incompatible '{node0}' & '{node1}' Are False")
+                return False
+
         if node[0] == 'geq':  # greater than or equal to
             node0 = self.walk(node[1])
             node1 = self.walk(node[2])
-            return node0 >= node1
+            try:
+                return node0 >= node1
+            except TypeError:  # if there was a type mismatch, returns value as false
+                self.warning_message(f"Incompatible '{node0}' & '{node1}' Are False")
+                return False
 
         # stores data inside variables inside the environment when declared
         if node[0] == 'var_declare':
             # type casting
             node_value = self.walk(node[3])  # gets the value for testing and storing in environment
-            #print(f"NODE: {node_value}")  # DEBUGGING DEBUGGING DEBUGGING DEBUGGING DEBUGGING DEBUGGING
             try:
                 # makes sure types are correct
                 if node[1] == 'int':
@@ -534,29 +572,22 @@ class PetExecute:
 
                 # type casting
                 # also displays if the value changed in anyway when changing its type
-                if self.environment[node_variable]['type'] == 'int':  # searches for the variable's type in the environment
-                    if isinstance(node_value, float):  # notifies how the other value was converted if converted into a bool
-                        self.warning_message(f"Converted '{node_value}' To '{int(node_value)}'")  # notifies that float was changed to int
-                    node_value = int(node_value)  # changes to int
-                elif self.environment[node_variable]['type'] == 'float':  # searches for the variable's type in the environment
-                    if isinstance(node_value, int):
-                        self.warning_message(f"Converted '{node_value}' To '{float(node_value)}'")  # notifies that int was changed to float
-                    node_value = float(node_value)  # changes int to float
-                elif self.environment[node_variable]['type'] == 'string':  # searches for the variable's type in the environment
-                    node_value = str(node_value)  # changes to string
-                elif self.environment[node_variable]['type'] == 'bool':  # searches for the variable's type in the environment
-                    # Used AI here as I had no idea how to solve my bool problem
-                    # convert to bool safely
-                    was_bool = isinstance(node_value, bool)
-                    converted = bool(node_value)
-                    # only warn if type changed or value actually changed for real bools
-                    if (not was_bool) or (was_bool and converted != node_value):
-                        self.warning_message(f"Converted {node_value} To {converted}")
-                    node_value = converted
-                elif self.environment[node_variable]['type'] == 'list':  # searches for the variable's type in the environment
-                    if isinstance(node_value, (int, float, str, bool)):  # notifies how the other value was entered in a list
-                        self.warning_message(f"'Converted '{node_value}' To '{[node_value]}'")  # notifies that anything was put into a list
-                        node_value = [node_value]  # changes node variable into a list
+                try:
+                    if self.environment[node_variable]['type'] == 'int':  # searches for the variable's type in the environment
+                        node_value = int(node_value)  # changes to int
+                    elif self.environment[node_variable]['type'] == 'float':  # searches for the variable's type in the environment
+                        node_value = float(node_value)  # changes to float
+                    elif self.environment[node_variable]['type'] == 'bool':  # searches for the variable's type in the environment
+                        node_value = bool(node_value)  # changes to bool
+                    elif self.environment[node_variable]['type'] == 'string':  # searches for the variable's type in the environment
+                        node_value = str(node_value)  # changes to string
+                    elif self.environment[node_variable]['type'] == 'list':  # searches for the variable's type in the environment
+                        if not isinstance(node_value, list):  # changes to list
+                            self.warning_message(f"Converted '{node_value}' To '{[node_value]}'")
+                            node_value = [node_value]
+                except (ValueError, TypeError):
+                    self.error_message(f" '{node_value}' To '{self.environment[node_variable]['type']}' Uncombatable")
+                    return None
 
                 # stores value
                 self.environment[node_variable]['value'] = node_value
@@ -565,10 +596,18 @@ class PetExecute:
         # returns the value of the variable asked for
         if node[0] == 'var':
             try:
-                try:  # will attempt to check if the var is a list instead of a single variable
-                    return self.environment[node[1]]['value'][self.walk(node[2])]  # takes data from that index
-                except IndexError:  # if variable is not part of a list
-                    return self.environment[node[1]]['value']  # tries to find variable and its data
+                # checks if value is a index for a list
+                if len(node) == 3:  # if the node has parts
+                    try:
+                        return self.environment[node[1]]['value'][self.walk(node[2])]
+                    except IndexError:  # if the index searches are out of range of possible indexes
+                        self.error_message(f"'{self.walk(node[2])}' Outside's '{node[1]}' Range ")
+                        return None
+                    except TypeError:  # if the thing provided is not a list
+                        self.error_message(f"'{node[1]}' Unlisted")
+                        return None
+
+                return self.environment[node[1]]['value']  # reruns data normal, used for non index searching lists
             except LookupError:  # if no variable or data was found
                 self.error_message(f"'{node[1]}' Undefined")  # only displays name of variable
                 return 0
@@ -577,22 +616,22 @@ class PetExecute:
         if node[0] == 'call':  # only functions
 
             # extracting the values from all of the arguments that were put in a group list
-            node_list = []  # will store reach argument in this list and will pull how far as needed for each call method
+            node_arguments = []  # will store reach argument in this list and will pull how far as needed for each call method
             if isinstance(node[2], list):  # checks if the node[2] is a group of expr or a single expr
                 for node_argument in node[2]:
-                    node_list.append(self.walk(node_argument))  # store and sets up argument to be used by the calls
+                    node_arguments.append(self.walk(node_argument))  # store and sets up argument to be used by the calls
             else:  # if it is a single expr statement and nor a group
-                node_list.append(self.walk(node[2]))
+                node_arguments.append(self.walk(node[2]))
 
             # only uses one argument
             if node[1] == 'print':  # functions for displaying text or data
-                print(node_list[0])  # prints out the exact same as print in python
+                print(node_arguments[0])  # prints out the exact same as print in python
             # only uses one argument
             elif node[1] == 'input':  # functions for asking and receiving user data or input
-                return input(node_list[0])  # gets the argument inside the input method for displaying and returns a user's response
+                return input(node_arguments[0])  # gets the argument inside the input method for displaying and returns a user's response
             # only uses one argument
             elif node[1] == 'run':  # functions for running many lines of code together
-                node_file = node_list[0]  # gets the file path given that has all the code to run
+                node_file = node_arguments[0]  # gets the file path given that has all the code to run
                 try:
                     if isinstance(node_file, str):
                         with open(node_file, 'r') as file:  # opens the file after removing the double quotation marks at the beginning and end
@@ -608,65 +647,128 @@ class PetExecute:
                                 node_tree = parser.parse(lexer.tokenize(node_text))  # splits command between spaces
                                 PetExecute(node_tree, self.environment, status)  # runs the commands with existing environment, parser, lexer, and everything else
                     else:
-                        self.error_message(f"'{node_file}' Type Uncombatable")  # notifies that file must be a string
+                        self.error_message(f"'{node_file}' Uncombatable")  # notifies that file must be a string
                 except FileNotFoundError:
                     self.warning_message(f"'{node_file}' Unfound")  # notifies if the file was not found
 
             # only uses one argument
             elif node[1] == 'len':  # checks the length of lists
-                return len(node_list[0])
+                try:
+                    return len(node_arguments[0])
+                except TypeError: # the searched with len is not a list
+                    self.error_message(f"'{node_arguments[0]}' Uncombatable")
+                    return None
             # only uses one argument
             elif node[1] == 'clear':  # clears the data from inside a list
-                return node_list[0].clear()
+                try:
+                    return node_arguments[0].clear()
+                except TypeError:  # the searched with len is not a list
+                    self.error_message(f"'{node_arguments[0]}' Uncombatable")
+                    return None
             # requires two argument, the list variable, and the data being added to the end of the list
             elif node[1] == 'append':  # adds data to the end of a list
-                return node_list[0].append(node_list[1])
+                if not isinstance(node_arguments[0], list):  # makes sure it is a list
+                    self.error_message(f"'{node_arguments[0]}' Uncombatable")
+                    return None
+                try:
+                    return node_arguments[0].append(node_arguments[1])
+                except IndexError:  # if index does not exist with in the location of the list
+                    self.error_message(f"'{node_arguments[1]}' Outside's '{node_arguments[0]}' Range")
+                    return None
             # requires three argument, the list variable, the position in the list the data will go in, and the data being added tothe list
             elif node[1] == 'insert':  # adds data anywhere to the list
-                return node_list[0].insert(node_list[1], node_list[2])
+                if not isinstance(node_arguments[0], list):  # makes sure it is a list
+                    self.error_message(f"'{node_arguments[0]}' Uncombatable")
+                    return None
+
+                return node_arguments[0].insert(node_arguments[1], node_arguments[2])
             # requires two argument, the list variable, and the location of the data being removed
             elif node[1] == 'pop':  # removes data form anywhere in the list
-                return node_list[0].pop(node_list[1])
+                if not isinstance(node_arguments[0], list):  # makes sure it is a list
+                    self.error_message(f"'{node_arguments[0]}' Uncombatable")
+                    return None
+                try:
+                    return node_arguments[0].pop(node_arguments[1])
+                except IndexError: # if index does not exist with in the location of the list
+                    self.error_message(f"'{node_arguments[1]}' Outside's '{node_arguments[0]}' Range")
+                    return None
             # requires two argument, the list variable, and the data being removed
             elif node[1] == 'remove':  # removes specified data from the list
-                return node_list[0].remove(node_list[1])
+                if not isinstance(node_arguments[0], list):  # makes sure it is a list
+                    self.error_message(f"'{node_arguments[0]}' Uncombatable")
+                    return None
+                try:
+                    return node_arguments[0].remove(node_arguments[1])
+                except ValueError:  # if no item was found form the index
+                    self.warning_message(f"'{node_arguments[1]}' Unfound")
+                    return None
             # requires two argument, the list variable, and the data being counted
             elif node[1] == 'count':  # counts the amount of that data inside a list
-                return node_list[0].count(node_list[1])
+                if not isinstance(node_arguments[0], list):  # makes sure it is a list
+                    self.error_message(f"{node_arguments[0]} Uncombatable")
+                    return None
+                return node_arguments[0].count(node_arguments[1])
             # only uses one argument
             elif node[1] == 'sort':  # sorts the data alphabetically
-                return node_list[0].sort()
+                if not isinstance(node_arguments[0], list):  # makes sure it is a list
+                    self.error_message(f"'{node_arguments[0]}' Uncombatable")
+                    return None
+                try: # test if values can be sorted
+                    return node_arguments[0].sort()
+                except TypeError:
+                    self.error_message(f"'{node_arguments[0]}' Unsortable")
+
 
             # only uses one argument
             elif node[1] == 'replenish':  # used to replenish stats for the pet
-                node_need = node_list[0]  # finds the need that will be replenished
+                node_need = node_arguments[0]  # finds the need that will be replenished
                 try:
                     # recovers what was drained during replenishing
-                    status.hunger.gain(0.08, instant=True)
-                    status.thirst.gain(0.13, instant=True)
-                    status.energy.gain(0.010, instant=True)
+                    status.hunger.gain(0.00833333333333333, instant=True)
+                    status.thirst.gain(0.06, instant=True)
+                    status.energy.gain(0.012, instant=True)
 
                     status.needs_list[node_need].gain()  # replenishes the pets needs by giving pets more of the need, allowing users to run code for longer
                 except KeyError:  # if the need does no
-                    self.warning_message(f"'{node_need}' Need Nonexistent")  # notifies that file must be a string
+                    self.warning_message(f"'{node_need}' Nonexistent")  # notifies that file must be a string
             # only uses one argument
             elif node[1] == 'check':  # used to check the stats for the pet
-                node_need = node_list[0]  # finds the need that will be checked
+                node_need = node_arguments[0]  # finds the need that will be checked
                 try:
                     return status.needs_list[node_need].check()  # replenishes the pets needs by giving pets more of the need, allowing users to run code for longer
                 except KeyError:  # if the need does not exist:
-                    self.warning_message(f"'{node_need}' Need Nonexistent")  # notifies that file must be a string
+                    self.error_message(f"'{node_need}' Nonexistent")  # notifies that file must be a string
             # all below are used to change the variable type, only uses one argument
             elif node[1] == 'int':  # functions for changed variable types to int
-                return int(node_list[0])  # gets the argument inside and converts the variable into an integer
+                try:
+                    return int(node_arguments[0])  # gets the argument inside and converts the variable into an integer
+                except (ValueError, TypeError):
+                    self.error_message(f"'{node_arguments[0]}' Uncombatable")
+                    return None
             elif node[1] == 'float':  # functions for changed variable types to float
-                return float(node_list[0])  # gets the argument inside and converts the variable into a float
+                try:
+                    return float(node_arguments[0])  # gets the argument inside and converts the variable into a float
+                except (ValueError, TypeError):
+                    self.error_message(f"'{node_arguments[0]}' Uncombatable")
+                    return None
             elif node[1] == 'string':  # functions for changed variable types to string
-                return str(node_list[0])  # gets the argument inside and converts the variable into a string
+                try:
+                    return str(node_arguments[0])  # gets the argument inside and converts the variable into a string
+                except (ValueError, TypeError):
+                    self.error_message(f"'{node_arguments[0]}' Uncombatable")
+                    return None
             elif node[1] == 'bool':  # functions for changed variable types to bool
-                return bool(node_list[0])  # gets the argument inside and converts the variable into a bool
+                try:
+                    return bool(node_arguments[0])  # gets the argument inside and converts the variable into a bool
+                except (ValueError, TypeError):
+                    self.error_message(f"'{node_arguments[0]}' Uncombatable")
+                    return None
             elif node[1] == 'type':  # functions to see what kind of type a variable is
-                return type(node_list[0]).__name__  # gets the argument inside and returns what type the value is
+                try:
+                    return type(node_arguments[0]).__name__  # gets the argument inside and returns what type the value is
+                except (ValueError, TypeError):
+                    self.error_message(f"'{node_arguments[0]}' Uncombatable")
+                    return None
 
         # if nothing came form the walk method
         return None
@@ -701,13 +803,8 @@ if __name__ == '__main__':
 
         # if commands form user was received
         if command:
-            #print(list(lexer.tokenize(command)))  # DEBUGGING DEBUGGING DEBUGGING DEBUGGING DEBUGGING DEBUGGING
             tree = parser.parse(lexer.tokenize(command))  # splits command between spaces
             PetExecute(tree, environment, status)  # runs the commands
-
-        print(f"HUNGER: {status.hunger.check()}")
-        print(f"THIRST: {status.thirst.check()}")
-        print(f"ENERGY: {status.energy.check()}")
 
     # makes user press something ENTER before the program fully closes
     input(f'\033[32m< Press ENTER To Exit >\033[0m')
